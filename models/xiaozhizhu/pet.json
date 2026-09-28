@@ -1,0 +1,53 @@
+{
+  "name": "小蜘蛛",
+  "idleEyes": {
+    "ParamEyeLSmile": 1,
+    "ParamEyeRSmile": 1
+  },
+  "freePlay": {
+    "enabled": true,
+    "idleDelay": 2.5,
+    "gap": [1.8, 5.5],
+    "acts": [
+      "nod",
+      "shake",
+      "wobble",
+      "swayBody",
+      "smileL",
+      "smileR",
+      "winkL",
+      "winkR",
+      "squintL",
+      "squintR",
+      "grin",
+      "plain",
+      "tilt",
+      "lookUp",
+      "shy",
+      "greet",
+      "shakeWobble",
+      "mischief",
+      "cute"
+    ]
+  },
+  "clickActs": {
+    "enabled": true
+  },
+  "talk": {
+    "enabled": true,
+    "gap": [120, 420],
+    "firstDelay": 10,
+    "idleDelay": 4,
+    "greetOnce": true
+  },
+  "lines": {
+    "default": [
+      "嗯？",
+      "怎么啦？",
+      "我在呢。",
+      "别戳我啦，我身上还有网液味儿呢。",
+      "帽子要掉了——啊，已经掉了。",
+      "等一下，我在算一个东西。"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "xiaozhizhu.moc3",
+		"Textures": [
+			"xiaozhizhu.1024/texture_00.png"
+		],
+		"DisplayInfo": "xiaozhizhu.cdi3.json"
+	}
+}
