@@ -270,6 +270,15 @@
       params: { ParamAngleY: -18, ParamAngleZ: -8, ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
     smirkL: { label: '单眼笑', dur: 1.4, in: 0.18, out: 0.34, hop: true,
       params: { ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamAngleZ: 8 } },
+    /* ★ 2026-09-29 新增：凶狠（双眼半眯）
+       口径直接对齐桌面版 renderer.js 的 squint：
+         squintL/R: ParamEyeLOpen 0.35 + Smile 1（另眼 Open 1）
+         idleEyes : Smile 1（桌面版待机本来就是 Smile=1）
+       所以「双眼都眯成凶狠样」= Open 0.35 + Smile 1，两眼一致。
+       实测与用户给的参考图⑤按脸宽归一后逐像素比对，0.35 比 0.30/0.40 都更贴合
+       （0.30 太细成一条缝，0.40 眼白偏大）。 */
+    fierce: { label: '凶狠', dur: 2.2, in: 0.18, out: 0.4, hop: false,
+      params: { ParamEyeLOpen: 0.35, ParamEyeROpen: 0.35, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
   }
   var REACT_COMBOS = {
     pokeBack: { label: '回敬一个 wink', steps: ['shakeNo', 'winkBack'] },
@@ -366,6 +375,7 @@
     blink: { pending: 1 + Math.random() * 2, t: -1, dur: 0.16 },
     autoBlink: false,
     talkNext: 0, seen: {}, seenDate: '',
+    suspended: false,        // ★ true 时 stepTalk/stepFree 完全不再自发起招式（自动化验证用）
   }
 
   /* 位置 / 大小（记住了才算自己的宠物） */
@@ -555,6 +565,17 @@
 
       var tAX = ux * 27 * gaze.k          // 头 R<->L（模型 ±30，留 3 度余量不顶死）
       var tAY = uy * 27 * gaze.k          // 头 U<->D（模型 ±30）
+      /* ★★ 2026-09-29 更正（上一版这里改错了，现改回原样）：
+         本模型 **ParamAngleY 负值 = 抬头，正值 = 低头** —— 依据是本代码库
+         自己的招式表，语义词明确、不会歧义：
+             lookUp 「抬头望天」 → ParamAngleY: -16
+             lookUpAt「抬头看你」→ ParamAngleY: -18
+             coverFace「低头捂脸」→ ParamAngleY: +14
+         所以 uy<0（手指在头的上方）应当得到**负**的 tAY（抬头）。
+         原式 `uy * 27` 本来就是对的；上一版误判成「负值=低头」并加了负号，
+         结果把上下彻底弄反（手指往上反而低头），故此处回退。
+         ⚠ 以后要确认这个符号，别靠肉眼猜渲染图，直接查招式表里
+           「抬头/低头」字样的 ParamAngleY 取值。 */
 
       /* ★ 缓动必须自己攒状态，不能写成 base + (目标-base)*k：
          baseOf() 永远返回 0（不随我们写进去的值变化），
@@ -588,6 +609,15 @@
     if (lockedAct && lockedAct.length) {
       for (var li = 0; li < lockedAct.length; li++) {
         var lp = lockedAct[li]
+        /* ★ 2026-09-29 修正：ParamEye*Open 在中段已被算成 base*blink，
+           这里如果直接跳过，「闭眼微笑」就闭不上（实测 LO=RO=1）。
+           改为**与当前值取 min** —— 眨眼要闭时闭，锁定要闭时也闭。 */
+        if (lp.id === 'ParamEyeLOpen' || lp.id === 'ParamEyeROpen') {
+          var curO = readP(lp.id)
+          var lockO = lp.v
+          if (curO === null || lockO < curO) setP(lp.id, lockO)
+          continue
+        }
         /* 已经写过的静态参数就让它赢（招式正在演的时候不抢戏） */
         if (vals[lp.id] === undefined) setP(lp.id, lp.v)
       }
@@ -616,6 +646,7 @@
     try { localStorage.setItem('pet.talk.seen', JSON.stringify({ d: RT.seenDate, k: RT.seen })) } catch (e) { }
   }
   function stepTalk(t) {
+    if (RT.suspended) return
     if (RT.talkNext === 0) { RT.talkNext = t + 10; return }
     if (t < RT.talkNext) return
     if (RT.play) { RT.talkNext = t + 3; return }
@@ -633,6 +664,7 @@
     RT.talkNext = t + rint(120, 420)
   }
   function stepFree(t) {
+    if (RT.suspended) return
     if (RT.play) return
     if (t < RT.quietUntil) return
     if (RT.freeAt === 0) { RT.freeAt = t + 2.5; return }
@@ -1000,7 +1032,7 @@
      -------------------------------------------------------------------- */
   var REACT_ORDER = [
     ['happyMelt', '闭眼微笑'], ['tiltStare', '歪头睁大眼'], ['startle', '吓一跳'],
-    ['peek', '偷看你'], ['winkBack', '眨回去'], ['smirkL', '单眼笑'],
+    ['peek', '偷看你'], ['winkBack', '眨回去'], ['smirkL', '单眼笑'], ['fierce', '凶狠'],
     ['lookUpAt', '抬头看你'], ['nodYes', '点头'], ['shakeNo', '摇头'],
     ['wiggle', '扭一扭'], ['shyHide', '闭眼快摇'], ['coverFace', '低头捂脸'],
     ['pokeBack', '回敬 wink'], ['shyPair', '捂脸再偷看'],
@@ -1053,8 +1085,27 @@
     /* 常驻态不要 sway（那是「演」用的摆动），只要静态表情 */
     return a.params
   }
+  /* ★ 2026-09-29 修正：启动时从 localStorage 恢复了 emojiLock，
+     但 lockedAct 从没被重建 —— 结果刷新后按钮显示「已锁定」，
+     参数却没写进去（或只写了组合招第一步的一半）。
+     这里在模型就绪后补上重建，保证「锁定的表情」真的生效。 */
+  function restoreLockedAct() {
+    if (!emojiLock) { lockedAct = null; return }
+    var p = lockParamsOf(emojiLock)
+    if (!p) { emojiLock = null; lockedAct = null; return }
+    lockedAct = p
+    renderEmojiPanel()
+  }
+
   function emojiPin(name) {
     if (emojiLock === name) {                      // 再长按 → 解锁
+      /* ★ 2026-09-29：解锁时把刚才被常驻写死的参数**显式复位到默认**，
+         否则它们会停在最后一帧的值上（例如 Smile 卡在 1 或者左右不等），
+         在静止态看上去就像「表情不对 / 左右反了」。 */
+      if (lockedAct) for (var qi = 0; qi < lockedAct.length; qi++) {
+        var qid = lockedAct[qi].id
+        if (PI[qid]) setP(qid, PI[qid].def)
+      }
       emojiLock = null; lockedAct = null
       try { localStorage.removeItem('pet.emoji') } catch (e) { }
       showBubble('好啦，表情自由了～')
@@ -1210,10 +1261,16 @@
         core = m.internalModel.coreModel
         app.stage.addChild(m)
         probe()
-        idleBase = { ParamEyeLSmile: 1, ParamEyeRSmile: 1 }
+        /* ★ 2026-09-29 修正：原来把双眼 Smile 硬钉成 1，onFrame 每帧
+           都会用 baseOf() 把它抬到 1，于是任何写了 0 的招式
+           （面无表情 / 睁大眼睛 / 右眼笑…）都被顶回去，表现就是
+           「微笑和不微笑反了」。改为不预设，让各招式自己决定；
+           需要「平时就微笑」时由招式/锁定态显式给出。 */
+        idleBase = {}
         for (var id in idleBase) if (!PI[id]) delete idleBase[id]
         RT.autoBlink = !(m.internalModel.eyeBlink)
         RT.play = null; RT.hop = -1
+        restoreLockedAct()      // ★ 重建上次锁定的表情（见函数注释）
         if (oldVM) { view.zoom = oldVM; view.ox = oldVO.ox; view.oy = oldVO.oy }
         layout()
         if (!m.__hooked) {
@@ -1353,9 +1410,16 @@
   window.__internal = function () { return model ? model.internalModel : null }
   window.__baseOf = function (id) { return baseOf(id) }
   window.__piDef = function (id) { return PI[id] ? PI[id].def : null }
+  /* ★ 诊断开关：停掉「自主弹话 + 自由活动 + 眨眼」，让参数只由我们的写入决定。
+     自动化验证必备 —— 否则随机插播的招式会把 ParamEye* 搅出假读数。
+     （2026-09-29：原来只清一次 RT.play，挡不住 stepFree 紧接着又起一招，
+      导致「锁 coverFace 时 RSmile 偶发读成 0」这种假失败。） */
   window.__suspendPlays = function (on) {
-    if (on) { RT.__savedPlay = RT.play; RT.play = null; RT.__savedAuto = RT.autoBlink; RT.autoBlink = false }
-    else { RT.play = RT.__savedPlay || null; RT.autoBlink = !!RT.__savedAuto }
+    if (on) { RT.__savedPlay = RT.play; RT.play = null; RT.__savedAuto = RT.autoBlink
+              RT.autoBlink = false; RT.suspended = true }
+    else { RT.suspended = false; RT.play = RT.__savedPlay || null
+           RT.autoBlink = !!RT.__savedAuto
+           RT.freeAt = 0; RT.talkNext = 0; RT.quietUntil = now() + 1 }
     return true
   }
   function readP(id) {
