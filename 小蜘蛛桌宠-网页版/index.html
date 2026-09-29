@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>小蜘蛛桌宠</title>
+
+<!-- ===== iOS 全屏（加到主屏幕后不再有 Safari 界面）===== -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="小蜘蛛">
+<meta name="theme-color" content="#14213D">
+<meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    position:fixed; inset:0; width:100%; height:100%;
+    overflow:hidden; overscroll-behavior:none;
+    /* ★ 触屏基础（需求3）：双击不缩放、长按不弹菜单、不选中文字、不出现点击高亮 */
+    touch-action:none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+    background:#0E1628;
+    font-family:-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  /* 背景：悬浮窗版是透明的（要浮在别人界面上），这里是有场景感的深色房间 */
+  #bg {
+    position:absolute; inset:0;
+    background:
+      radial-gradient(125% 78% at 50% 4%,  #33437A 0%, #22305C 34%, #16203C 62%, #0E1628 100%);
+  }
+  /* 地面的一点光晕，让人物不是悬空贴在黑底上 */
+  #bg::after {
+    content:""; position:absolute; left:0; right:0; bottom:0; height:46%;
+    background:radial-gradient(60% 100% at 50% 100%, rgba(122,150,230,.20) 0%, rgba(122,150,230,0) 70%);
+  }
+  #cv { position:absolute; inset:0; display:block; width:100%; height:100%; }
+
+  #safe { position:absolute; top:0; left:0; height:0; visibility:hidden; pointer-events:none;
+          padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+
+  /* 台词气泡：跟着角色头顶走，位置由 JS 算 */
+  #bubble {
+    position:absolute; left:50%; transform:translateX(-50%);
+    max-width:min(84vw, 460px); padding:10px 14px;
+    background:rgba(255,255,255,.95); color:#14213D;
+    font-size:16px; line-height:1.45; text-align:center;
+    border-radius:16px; border:1px solid rgba(20,33,61,.14);
+    box-shadow:0 8px 26px rgba(0,0,0,.32);
+    opacity:0; transition:opacity .2s ease, transform .2s ease;
+    pointer-events:none; z-index:30;
+  }
+  #bubble.on { opacity:1; }
+  #bubble::after {
+    content:""; position:absolute; left:50%; bottom:-7px; margin-left:-7px;
+    width:0; height:0; border:7px solid transparent; border-top-color:rgba(255,255,255,.95); border-bottom:0;
+  }
+
+  /* ---------------------------------------------------------------
+     顶栏（需求4/5/6）：✋拖拽 / 👁吸引转头 · ♪音乐 · 😊表情 · ⟲复位
+     ★ 触屏目标尺寸：每个 44x44（iOS HIG 建议的最小可点面积）
+     --------------------------------------------------------------- */
+  /* ★ 顶栏改横排一行（需求3/4/5/6 的 4 个键）：
+     竖屏手机上「竖排 4 个 44px 按钮」要占掉右边一整条 206px 高的空间，
+     角色的脸正好被挤在那一条上；横排只占顶部 44px，观感和点按都更好。
+     4 * 44 + 3 * 8 = 200px 宽，412px 宽的屏幕上放得下。 */
+  #bar {
+    position:absolute; right:calc(10px + env(safe-area-inset-right)); z-index:40;
+    top:calc(10px + env(safe-area-inset-top));
+    display:flex; flex-direction:row; gap:8px;
+    align-items:center;
+  }
+  #bar button {
+    width:44px; height:44px; border:0; border-radius:50%;
+    background:rgba(255,255,255,.14); color:#EAF0FF; font-size:19px; line-height:1;
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.16); opacity:.78;
+    touch-action:manipulation; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease, opacity .15s ease, transform .1s ease;
+  }
+  #bar button:active { opacity:1; transform:scale(.92); }
+  /* 点亮态：拖拽=中性，吸引转头/音乐开/表情锁定都点亮成蓝色，一眼能看出当前状态 */
+  #bar button.on {
+    opacity:1; background:rgba(122,162,255,.42);
+    border-color:rgba(160,190,255,.55); color:#FFFFFF;
+    box-shadow:0 0 0 2px rgba(122,162,255,.22);
+  }
+
+  /* 表情栏（需求6）：挂在顶栏正下方，右侧对齐；两列排布，尽量少占地 */
+  #emojiPanel {
+    position:absolute; right:calc(10px + env(safe-area-inset-right)); z-index:45;
+    top:calc(10px + env(safe-area-inset-top) + 44px + 8px);
+    width:min(214px, 58vw); max-height:min(62vh, 430px); overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    background:rgba(18,28,52,.90);
+    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.16); border-radius:16px;
+    padding:8px; display:none; box-shadow:0 12px 34px rgba(0,0,0,.42);
+    /* 两列自适应：条目窄的时候自动并排 */
+    grid-template-columns:1fr 1fr; gap:4px;
+  }
+  #emojiPanel.on { display:grid; }
+  #emojiPanel .hd {
+    grid-column:1 / -1;
+    color:rgba(226,234,255,.66); font-size:11px; line-height:1.5;
+    padding:2px 6px 6px; text-align:center;
+  }
+  #emojiPanel .item {
+    width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+    padding:8px 9px; border:0; border-radius:10px;
+    background:rgba(255,255,255,.06); color:#EAF0FF;
+    font-size:13px; font-family:inherit; text-align:left;
+    touch-action:manipulation; min-height:44px; justify-content:center;
+  }
+  #emojiPanel .item .pin { font-size:10px; opacity:.5; }
+  #emojiPanel .item:active { background:rgba(255,255,255,.16); }
+  /* 常驻锁定态 */
+  #emojiPanel .item.on {
+    background:rgba(122,162,255,.42); color:#fff;
+    box-shadow:inset 0 0 0 1px rgba(160,190,255,.5);
+  }
+  #emojiPanel .item.on .pin { opacity:1; }
+
+  #hint {
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom:calc(16px + env(safe-area-inset-bottom));
+    color:rgba(226,234,255,.62); font-size:13px; letter-spacing:.4px;
+    transition:opacity .8s ease; pointer-events:none; z-index:20;
+    text-align:center; width:92%; line-height:1.5;
+  }
+  #hint.off { opacity:0; }
+
+  #err {
+    position:absolute; left:12px; right:12px; top:calc(16px + env(safe-area-inset-top));
+    background:rgba(255,255,255,.94); color:#B3261E; font-size:13px; line-height:1.5;
+    padding:10px 12px; border-radius:12px; display:none; z-index:50;
+  }
+</style>
+</head>
+<body>
+
+<div id="bg"></div>
+<canvas id="cv"></canvas>
+<div id="safe"></div>
+<div id="bubble"></div>
+<div id="err"></div>
+<div id="bar">
+  <button id="btnReset" title="回到原位">⟲</button>
+  <button id="btnMusic" title="音乐开 / 关">♪</button>
+  <button id="btnEmoji" title="表情栏">😊</button>
+  <button id="btnHold" title="拖拽 / 吸引转头">✋</button>
+</div>
+
+<!-- 表情栏（需求6）：轻点=演一次，长按=常驻锁定 -->
+<div id="emojiPanel">
+  <div class="hd">轻点＝演一次<br>长按＝常驻锁定</div>
+</div>
+
+<div id="hint">轻戳一下 · 按住拖动 · 双指缩放 · 右上角可切「吸引转头」</div>
+
+<script src="lib/live2dcubismcore.min.js"></script>
+<script src="lib/pixi.min.js"></script>
+<script src="lib/pixi-live2d-display.min.js"></script>
+<script>
+/* =========================================================================
+   iPhone / iPad 网页版桌宠
+   —— 招式库 / 台词表 / 眼型规则全部沿用安卓版内核（同一份，同一个性格）。
+      改掉的只有「形态」：
+        · iOS 不允许第三方悬浮窗，所以做成全屏网页 App（加到主屏幕后没有浏览器界面）
+        · 有背景、有地面光晕（悬浮窗版是透明的）
+        · 触摸：轻戳 = 戳一下，单指拖 = 挪位置，双指 = 缩放，位置大小会记住
+   ========================================================================= */
+(function () {
+  'use strict'
+
+  var errEl  = document.getElementById('err')
+  var bubble = document.getElementById('bubble')
+  var hintEl = document.getElementById('hint')
+  var safeEl = document.getElementById('safe')
+  var bubbleTimer = 0
+
+  function warn(m) { console.log('[桌宠] ' + m) }
+  var warnedOnce = {}
+  function warnOnce(m) { if (warnedOnce[m]) return; warnedOnce[m] = 1; warn(m) }
+  function fatal(m) { errEl.style.display = 'block'; errEl.textContent = m; console.error('[桌宠] ' + m) }
+
+  /* ★ 眼型下限：0 是全闭（允许），0.3~1 是半闭到全睁。
+        0 < 开眼度 < 0.3 在这只模型上就是「眼白只剩一条小缝」，不要。 */
+  var EYE_OPEN_MIN = 0.3
+  var EYE_IDS = { ParamEyeLOpen: 1, ParamEyeROpen: 1 }
+  function clampEye(id, v) {
+    if (EYE_IDS[id] && v > 0 && v < EYE_OPEN_MIN) return EYE_OPEN_MIN
+    return v
+  }
+
+  /* ---------------- 角色：只有小蜘蛛（需求1：不要切换模型） ----------------
+     ★ 这里刻意保留成数组形态：以后真想再加一个模型，往里面加一行就行，
+       但**界面上不提供任何切换入口**，永远用第 0 个。 */
+  var MODELS = [
+    { name: '小蜘蛛', url: 'models/xiaozhizhu/xiaozhizhu.model3.json' }
+  ]
+  var mi = 0   // 恒为 0
+
+  /* ---------------- 招式库（自由活动） ---------------- */
+  var ACT_LIB = {
+    plain: { label: '面无表情', dur: 2.0, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0 } },
+    smile: { label: '微笑', dur: 2.6, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
+    smileL: { label: '左眼笑', dur: 2.4, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
+    smileR: { label: '右眼笑', dur: 2.4, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
+    grin: { label: '笑眯了眼', dur: 2.6, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamEyeLOpen: 0.45, ParamEyeROpen: 0.45, ParamMouthForm: 1 } },
+    winkL: { label: '左眼眨一下', dur: 1.5, params: { ParamEyeLOpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
+    winkR: { label: '右眼眨一下', dur: 1.5, params: { ParamEyeROpen: 0, ParamEyeRSmile: 0, ParamEyeLSmile: 1, ParamMouthForm: 1 } },
+    squintL: { label: '左眼半眯', dur: 2.2, params: { ParamEyeLOpen: 0.35, ParamEyeLSmile: 1, ParamEyeROpen: 1, ParamEyeRSmile: 0 } },
+    squintR: { label: '右眼半眯', dur: 2.2, params: { ParamEyeROpen: 0.35, ParamEyeRSmile: 1, ParamEyeLOpen: 1, ParamEyeLSmile: 0 } },
+    wide: { label: '睁大眼睛', dur: 1.8, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0, ParamBrowLY: 0.7, ParamBrowRY: 0.7 } },
+    nod: { label: '点头', dur: 2.4, sway: [{ id: 'ParamAngleY', amp: 13, freq: 1.5 }] },
+    shake: { label: '摇头', dur: 2.8, sway: [{ id: 'ParamAngleX', amp: 19, freq: 1.15 }] },
+    wobble: { label: '晃脑', dur: 3.4, sway: [{ id: 'ParamAngleZ', amp: 14, freq: 0.85 }, { id: 'ParamBodyAngleZ', amp: 7, freq: 0.85 }] },
+    swayBody: { label: '扭扭身子', dur: 3.6, sway: [{ id: 'ParamBodyAngleX', amp: 7, freq: 0.7 }, { id: 'ParamAngleX', amp: 11, freq: 0.7 }] },
+    tilt: { label: '歪头看你', dur: 3.0, params: { ParamAngleZ: 17, ParamAngleX: -8, ParamEyeLOpen: 0.8, ParamEyeLSmile: 1, ParamEyeRSmile: 0 } },
+    lookUp: { label: '抬头望天', dur: 3.0, params: { ParamAngleY: -16, ParamAngleZ: -9, ParamEyeLOpen: 0.55, ParamEyeROpen: 0.55, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
+    shy: { label: '有点不好意思', dur: 2.6, params: { ParamAngleX: -12, ParamAngleZ: 10, ParamEyeLOpen: 0.4, ParamEyeROpen: 0.4, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
+  }
+  var ACT_COMBOS = {
+    greet: { label: '打招呼', steps: ['nod', 'smile'] },
+    shakeWobble: { label: '摇头晃脑', steps: ['shake', 'wobble'] },
+    mischief: { label: '调皮', steps: ['squintL', 'smileR'] },
+    cute: { label: '卖萌', steps: ['tilt', 'grin', 'plain'] },
+  }
+  var FREE_DEFAULT = ['nod', 'shake', 'wobble', 'swayBody', 'smileL', 'smileR', 'winkL', 'winkR',
+    'squintL', 'squintR', 'grin', 'plain', 'tilt', 'lookUp', 'shy',
+    'greet', 'shakeWobble', 'mischief', 'cute']
+
+  /* ---------------- 点击反应库 ---------------- */
+  var REACT_LIB = {
+    shyHide: { label: '闭上眼快速摇头', dur: 1.1, in: 0.12, out: 0.32, hop: false,
+      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 0.5, ParamEyeRSmile: 0.5 },
+      sway: [{ id: 'ParamAngleX', amp: 20, freq: 3.4 }, { id: 'ParamBodyAngleX', amp: 6, freq: 3.4 }] },
+    tiltStare: { label: '歪头睁大眼睛', dur: 1.9, in: 0.22, out: 0.4, hop: false,
+      params: { ParamAngleZ: 20, ParamAngleX: -6, ParamAngleY: 4, ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
+      sway: [{ id: 'ParamAngleZ', amp: 3, freq: 0.6 }] },
+    nodYes: { label: '点头', dur: 1.1, in: 0.14, out: 0.28, hop: false,
+      sway: [{ id: 'ParamAngleY', amp: 16, freq: 2.8 }] },
+    shakeNo: { label: '摇头', dur: 1.3, in: 0.14, out: 0.3, hop: false,
+      params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
+      sway: [{ id: 'ParamAngleX', amp: 20, freq: 2.4 }] },
+    winkBack: { label: '眨回去', dur: 1.0, in: 0.12, out: 0.3, hop: true,
+      params: { ParamEyeLOpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 1 } },
+    coverFace: { label: '低头捂脸', dur: 1.8, in: 0.25, out: 0.4, hop: false,
+      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamAngleY: 14, ParamAngleX: -8 } },
+    peek: { label: '偷看你', dur: 1.7, in: 0.2, out: 0.4, hop: false,
+      params: { ParamEyeLOpen: 0.45, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 0 },
+      sway: [{ id: 'ParamAngleZ', amp: 4, freq: 0.5 }] },
+    startle: { label: '吓一跳', dur: 0.9, in: 0.1, out: 0.3, hop: true, hopAmp: 34,
+      params: { ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
+      sway: [{ id: 'ParamAngleY', amp: 9, freq: 3 }] },
+    wiggle: { label: '扭一扭', dur: 1.6, in: 0.2, out: 0.35, hop: false,
+      sway: [{ id: 'ParamBodyAngleZ', amp: 9, freq: 2 }, { id: 'ParamAngleZ', amp: 7, freq: 2 }] },
+    /* ★ 用户明确要求：闭眼微笑就写 0（全闭），不要 0.3~0.4 那种「一条缝」 */
+    happyMelt: { label: '闭眼微笑', dur: 1.9, in: 0.25, out: 0.45, hop: false,
+      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1 },
+      sway: [{ id: 'ParamAngleZ', amp: 9, freq: 0.9 }] },
+    lookUpAt: { label: '抬头看你', dur: 1.6, in: 0.2, out: 0.4, hop: false,
+      params: { ParamAngleY: -18, ParamAngleZ: -8, ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
+    smirkL: { label: '单眼笑', dur: 1.4, in: 0.18, out: 0.34, hop: true,
+      params: { ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamAngleZ: 8 } },
+  }
+  var REACT_COMBOS = {
+    pokeBack: { label: '回敬一个 wink', steps: ['shakeNo', 'winkBack'] },
+    shyPair: { label: '先捂脸再偷看', steps: ['coverFace', 'peek'] },
+  }
+  var REACT_DEFAULT = ['shyHide', 'tiltStare', 'nodYes', 'shakeNo', 'winkBack', 'coverFace',
+    'peek', 'startle', 'wiggle', 'happyMelt', 'lookUpAt', 'smirkL', 'pokeBack', 'shyPair']
+
+  var ALL_ACTS = {}, ALL_COMBOS = {}, k
+  for (k in ACT_LIB) ALL_ACTS[k] = ACT_LIB[k]
+  for (k in REACT_LIB) ALL_ACTS[k] = REACT_LIB[k]
+  for (k in ACT_COMBOS) ALL_COMBOS[k] = ACT_COMBOS[k]
+  for (k in REACT_COMBOS) ALL_COMBOS[k] = REACT_COMBOS[k]
+
+  /* ---------------- 台词（汤姆·赫兰德那版蜘蛛侠的语气） ---------------- */
+  var ACT_SAY = {
+    shyHide: ['别、别戳啦！我在专心呢。', '喂——刚刚差点就成功了。'],
+    tiltStare: ['怎么了？出什么事了吗？', '你、你盯着我干嘛？我脸上有东西？'],
+    nodYes: ['好，交给我吧！', '嗯！我马上就去。'],
+    shakeNo: ['不不不，这个真不行。', '这回我可不干了。'],
+    winkBack: ['嘿！我也会。', '这是我跟 Ned 的暗号，你懂吗？'],
+    coverFace: ['完了完了，我搞砸了。'],
+    peek: ['……你还在生气吗？'],
+    startle: ['哇——！吓我一跳！'],
+    wiggle: ['好吧好吧，让你看看新装备。'],
+    happyMelt: ['嗯——这样还挺舒服的。', '好好好——别戳啦，我差点就睡着了。'],
+    lookUpAt: ['你在上面吗？我看得见你。'],
+    smirkL: ['这招是我自己琢磨的，帅吧？'],
+    pokeBack: ['回敬一个——这是礼貌。'],
+    shyPair: ['我没事！真的没事……好吧，有点事。'],
+  }
+  var TALK_PERIODS = [
+    { key: 'morning', label: '早上', from: 5 * 60, to: 11 * 60 - 1,
+      greet: ['早上好啊！今天也要打起精神来——我说的是你，我还在热身。'], greetActs: ['greet', 'nod'],
+      moods: [
+        { say: ['早上的脑子最好使，我的新发明今天一定成功。'], acts: ['wide', 'nod'] },
+        { say: ['第一节课别迟到……我上次就迟了。'], acts: ['nod', 'shake'] },
+        { say: ['早餐吃了吗？梅姨说不吃早饭会变笨。'], acts: ['tilt', 'smileL'] }] },
+    { key: 'day', label: '白天', from: 11 * 60, to: 18 * 60 - 1,
+      greet: ['中午好。饭吃了吗？我可是按点吃饭的那种人。'], greetActs: ['nod', 'smile'],
+      moods: [
+        { say: ['下午三点的我，只想找张椅子。'], acts: ['swayBody', 'plain'] },
+        { say: ['我刚在脑子里排练了一段超帅的登场，可惜没人看见。'], acts: ['mischief', 'smileR'] },
+        { say: ['今天也要加油——这句话我每天都说一遍。'], acts: ['nod', 'smile'] }] },
+    { key: 'evening', label: '晚上', from: 18 * 60, to: 23 * 60 - 1,
+      greet: ['晚上好。今天辛苦啦，记得早点休息。'], greetActs: ['smile', 'shy'],
+      moods: [
+        { say: ['今天辛苦了，剩下的明天再说吧。'], acts: ['smile', 'shy'] },
+        { say: ['别熬太晚，我在这儿守着呢。'], acts: ['nod', 'lookUp'] },
+        { say: ['我该去巡逻了……好吧，我只是想出去走走。'], acts: ['tilt', 'swayBody'] }] },
+    { key: 'night', label: '深夜', from: 23 * 60, to: 5 * 60 + 1439,
+      greet: ['都这个点了……你是不是又不打算睡了？'], greetActs: ['squintL', 'shy'],
+      moods: [
+        { say: ['深夜适合想事情，也适合后悔白天没想事情。'], acts: ['wobble', 'plain'] },
+        { say: ['再刷一会儿就睡——这句话你说过几遍啦？'], acts: ['squintL', 'squintR'] },
+        { say: ['困了就去睡吧，我替你盯着。'], acts: ['shy', 'nod'] }] },
+  ]
+  var TALK_ANY = [
+    { say: ['我在想，要不要给战衣加个新功能。'], acts: ['wobble', 'lookUp'] },
+    { say: ['网液配方我调了十七次了，这次一定行。'], acts: ['nod', 'smileR'] },
+    { say: ['呃，我是不是话有点多？Ned 也这么说过。'], acts: ['shy', 'plain'] },
+    { say: ['梅姨说要多喝水，你也别忘了。'], acts: ['nod', 'tilt'] },
+    { say: ['嘘——我在听有没有异常。……好吧，什么也没有。'], acts: ['squintL', 'squintR'] },
+    { say: ['如果一会儿有紧急情况，我立刻出发——我是说，我马上就能出发。'], acts: ['wide', 'nod'] },
+    { say: ['你有没有那种感觉：明明什么都没干，就已经下午了。'], acts: ['plain', 'swayBody'] },
+  ]
+
+  function pick(a) { return a && a.length ? a[Math.floor(Math.random() * a.length)] : null }
+  function rint(a, b) { return a + Math.random() * (b - a) }
+  function now() { return performance.now() / 1000 }
+  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v) }
+
+  /* ==================== 渲染 ==================== */
+  if (typeof PIXI === 'undefined' || !PIXI.live2d || !PIXI.live2d.Live2DModel) {
+    fatal('Live2D 运行库没加载起来'); return
+  }
+
+  var app = new PIXI.Application({
+    view: document.getElementById('cv'),
+    backgroundAlpha: 0,
+    antialias: true,
+    autoDensity: true,
+    resolution: Math.min(2, window.devicePixelRatio || 1),
+    resizeTo: window,
+  })
+  var model = null, core = null
+  var PI = {}
+  var idleBase = {}
+  var setById = false
+
+  var RT = {
+    play: null, quietUntil: 0, freeAt: 0,
+    hop: -1, hopDur: 0.42, hopAmp: 22, baseY: 0,
+    blink: { pending: 1 + Math.random() * 2, t: -1, dur: 0.16 },
+    autoBlink: false,
+    talkNext: 0, seen: {}, seenDate: '',
+  }
+
+  /* 位置 / 大小（记住了才算自己的宠物） */
+  var view = { zoom: 1, ox: 0, oy: 0 }
+
+  /* ★ 按住时的手势模式（2026-09-28）：
+       'drag' = 按住单指拖动整个角色（原来的行为，默认）
+       'gaze' = 按住时**身体完全不动**，只有脑袋朝手指转过去、眼珠跟着看，
+                就像电脑上鼠标滑过屏幕那样「被它注意到」；松手视线回到正前方。
+     存 localStorage，下次打开还是上次选的。按钮在右上角 ↕，点一下切换。
+     ⚠ 旧版本（9/28 早）这一档是 'follow'：整个身体朝手指探过去 —— 已经废弃。
+       读到旧值 'follow' 一律迁移成 'gaze'。 */
+  var holdMode = 'drag'
+  /* 视线追随状态：tx/ty 是指针位置；k 是 0→1 的「贴上程度」（平滑用，不是位移） */
+  var gaze = { active: false, tx: 0, ty: 0, k: 0 }
+  try {
+    var hm = localStorage.getItem('pet.hold')
+    if (hm === 'follow') hm = 'gaze'                       // 旧值迁移
+    if (hm === 'drag' || hm === 'gaze') holdMode = hm
+  } catch (e) { }
+  function saveHold() { try { localStorage.setItem('pet.hold', holdMode) } catch (e) { } }
+
+  /* ---------------- 招式编译：剔掉模型没有的参数 ---------------- */
+  function compile(tpl, name) {
+    var out = { label: tpl.label || name, params: [], sway: [] }
+    var p = tpl.params || {}, id
+    for (id in p) {
+      if (!PI[id]) { warnOnce('招式「' + name + '」要用模型里没有的参数 ' + id + '，已跳过'); continue }
+      var v = Number(p[id])
+      if (!isFinite(v)) continue
+      v = clampEye(id, v)
+      var lo = PI[id].min, hi = PI[id].max
+      if (v < lo) v = lo
+      if (v > hi) v = hi
+      out.params.push({ id: id, i: PI[id].i, v: v })
+    }
+    var sws = tpl.sway || []
+    for (var s = 0; s < sws.length; s++) {
+      var sw = sws[s]
+      if (!sw || !PI[sw.id]) continue
+      var amp = Number(sw.amp)
+      if (!isFinite(amp) || amp === 0) continue
+      var fq = Number(sw.freq)
+      out.sway.push({ id: sw.id, i: PI[sw.id].i, amp: amp, freq: isFinite(fq) && fq > 0 ? fq : 1 })
+    }
+    if (!out.params.length && !out.sway.length) return null
+    var d = Number(tpl.dur), fi = Number(tpl.in), fo = Number(tpl.out)
+    out.dur = isFinite(d) && d > 0.2 ? d : 2.4
+    out.tin = isFinite(fi) && fi >= 0 ? fi : 0.4
+    out.tout = isFinite(fo) && fo >= 0 ? fo : 0.5
+    out.hop = tpl.hop === false ? false : (tpl.hop === true)
+    out.hopAmp = isFinite(Number(tpl.hopAmp)) ? Number(tpl.hopAmp) : null
+    return out
+  }
+  function stepsOf(name) {
+    if (ALL_ACTS[name]) { var a = compile(ALL_ACTS[name], name); return a ? [a] : null }
+    if (ALL_COMBOS[name]) {
+      var all = []
+      for (var i = 0; i < ALL_COMBOS[name].steps.length; i++) {
+        var c = stepsOf(ALL_COMBOS[name].steps[i])
+        if (c) all = all.concat(c)
+      }
+      return all.length ? all : null
+    }
+    return null
+  }
+  function seqOf(names) {
+    var all = []
+    for (var i = 0; i < names.length; i++) {
+      var c = stepsOf(names[i])
+      if (c) all = all.concat(c)
+    }
+    return all.length ? all : null
+  }
+  function totalDur(list) { var t = 0; for (var i = 0; i < list.length; i++) t += list[i].dur; return t }
+
+  /* ---------------- 播放 ---------------- */
+  function startPlay(list, say, hop) {
+    if (!list || !list.length) return false
+    RT.play = { list: list, i: 0, t0: now() }
+    if (say) showBubble(say)
+    if (hop) { RT.hop = 0; RT.hopAmp = 22 }
+    RT.quietUntil = now() + 4
+    return true
+  }
+  function envelope(el, a) {
+    if (el < a.tin) return a.tin > 0 ? el / a.tin : 1
+    if (el < a.dur - a.tout) return 1
+    if (el < a.dur) return (a.dur - el) / Math.max(0.001, a.tout)
+    return 0
+  }
+  function baseOf(id) {
+    if (Object.prototype.hasOwnProperty.call(idleBase, id)) return idleBase[id]
+    return PI[id] ? PI[id].def : 0
+  }
+  function setP(id, v) {
+    if (!PI[id]) return
+    try { if (setById) core.setParameterValueById(id, v); else core.setParameterValueByIndex(PI[id].i, v) }
+    catch (e) { }
+  }
+
+  function onFrame(dt) {
+    if (!model) return
+    var t = now(), vals = {}
+
+    var open = 1, b = RT.blink
+    if (RT.autoBlink) {
+      if (b.t < 0) {
+        b.pending -= dt
+        if (b.pending <= 0) { b.t = 0; b.dur = 0.11 + Math.random() * 0.07 }
+      }
+      if (b.t >= 0) {
+        b.t += dt
+        var bp = b.t / b.dur
+        if (bp >= 1) { b.t = -1; b.pending = 1.8 + Math.random() * 4 }
+        else { var cp = 0.42; open = bp < cp ? 1 - bp / cp : (bp - cp) / (1 - cp) }
+      }
+    }
+
+    if (RT.play) {
+      var p = RT.play
+      while (p) {
+        var a = p.list[p.i], el = t - p.t0
+        if (el < a.dur) break
+        p.t0 += a.dur; p.i++
+        if (p.i >= p.list.length) { p = RT.play = null; break }
+      }
+      if (p) {
+        var act = p.list[p.i], env = envelope(t - p.t0, act), j
+        for (j = 0; j < act.params.length; j++) {
+          var pr = act.params[j]
+          vals[pr.id] = baseOf(pr.id) + (pr.v - baseOf(pr.id)) * env
+        }
+        for (j = 0; j < act.sway.length; j++) {
+          var sw = act.sway[j]
+          var cur = vals[sw.id] !== undefined ? vals[sw.id] : baseOf(sw.id)
+          vals[sw.id] = cur + sw.amp * Math.sin(2 * Math.PI * sw.freq * (t - p.t0)) * env
+        }
+      }
+    }
+
+    var id
+    for (id in idleBase) if (vals[id] === undefined) vals[id] = idleBase[id]
+    if (PI.ParamEyeLOpen) vals.ParamEyeLOpen = (vals.ParamEyeLOpen !== undefined ? vals.ParamEyeLOpen : baseOf('ParamEyeLOpen')) * open
+    if (PI.ParamEyeROpen) vals.ParamEyeROpen = (vals.ParamEyeROpen !== undefined ? vals.ParamEyeROpen : baseOf('ParamEyeROpen')) * open
+    for (id in vals) setP(id, vals[id])
+
+    if (RT.hop >= 0) {
+      RT.hop += dt
+      var hp = RT.hop / RT.hopDur
+      if (hp >= 1) { RT.hop = -1; model.y = RT.baseY; model.rotation = 0 }
+      else {
+        model.y = RT.baseY - RT.hopAmp * Math.sin(Math.PI * hp)
+        model.rotation = Math.sin(Math.PI * 2 * hp) * 0.05 * (1 - hp)
+      }
+    }
+
+    /* ★ 视线追随（gaze 模式）：**身体一个像素都不动**，只把脑袋朝手指转过去。
+       排在招式/待机那一段**之后**，用 lerp 接管 ParamAngleX/Y；
+       松手后平滑回到 idleBase（= 正前方）。
+       ⚠ 这里**绝对不要碰 model.x / model.y** —— 用户要的就是「建模本身不动，脸向那边看」。
+       ⚠ 一律从 idleBase 起算目标角度，不要用 vals[id] + 偏移（会正反馈越转越大）。
+       ★ 只动 ParamAngleX/Y 两个参数，**不碰任何眼睛参数**（用户：看的时候不要有其他的眼睛变化）。 */
+    if (holdMode === 'gaze' && model) {
+      gaze.k += ((gaze.active ? 1 : 0) - gaze.k) * (gaze.active ? 0.30 : 0.14)
+      if (!gaze.active && gaze.k < 0.004) gaze.k = 0
+
+      /* ★ 360° 全方位跟随：以「角色头部」为圆心，算出手指相对它的方位。
+         ⚠ 横竖必须用**各自的尺度**，不能用同一个半径 ——
+         屏幕又高又窄（竖屏 480x860），若统一用对角线当半径（≈491），
+         横向最多只到 ux=±0.557（头只转 15°），竖向却能顶到 ±1（转 27°），
+         看着就是「左右转不动、上下还行」。
+         所以拿**各自半轴**当尺度：横向用屏幕半宽，竖向用 0.58 倍屏幕半高。
+         再用**同一个比例**把超出单位圆的部分缩回来，方向就永远保真。 */
+      var Wg = app.screen.width, Hg = app.screen.height
+      var headX = view.ox + Wg / 2                  // 角色头部水平位置（角色居中）
+      var headY = RT.baseY + RT.mh * 0.22           // 角色头部竖直位置（约在顶上 22%）
+      var rxScale = Math.max(Wg * 0.5, 1)           // 横向尺度 = 屏幕半宽
+      var ryScale = Math.max(Hg * 0.58 * 0.5, 1)    // 竖向尺度 = 0.58 倍屏幕半高
+
+      var ux = (gaze.tx - headX) / rxScale
+      var uy = (gaze.ty - headY) / ryScale
+      /* 圆盘映射：|u| > 1 时按**同一比例**缩回单位圆内，
+         这样方向永远保真（斜角还是斜角），只是远处不再继续加角度。 */
+      var ul = Math.sqrt(ux * ux + uy * uy)
+      if (ul > 1) { ux /= ul; uy /= ul }
+
+      var tAX = ux * 27 * gaze.k          // 头 R<->L（模型 ±30，留 3 度余量不顶死）
+      var tAY = -uy * 27 * gaze.k         // 头 U<->D（模型 ±30）
+      /* ★ 2026-09-29 修正：uy<0 = 手指在头的上方。本模型 ParamAngleY 负值
+         是「低头」、正值是「抬头」（与直觉相反），所以必须取负号才能
+         「手指往上 -> 抬头看上面」。此前直接写 uy 导致上下完全反相。 */
+
+      /* ★ 缓动必须自己攒状态，不能写成 base + (目标-base)*k：
+         baseOf() 永远返回 0（不随我们写进去的值变化），
+         那样每帧算出来的都是同一个常数（0 + 目标*0.3），
+         成了不动点 —— 表现就是「头只转 30% 就卡住不再动」，
+         实测 目标-20.3 时稳定停在 -6.09，正好 30%。 */
+      var easeA = gaze.active ? 0.26 : 0.15
+      gy.x += (tAX - gy.x) * easeA
+      gy.y += (tAY - gy.y) * easeA
+      if (!gaze.active && gaze.k === 0) { gy.x = 0; gy.y = 0 }
+      setP('ParamAngleX', gy.x)
+      if (PI.ParamAngleY) setP('ParamAngleY', gy.y)
+      /* ★ 用户要求「看的时候不要有其他的眼睛变化」：
+         追随期间把眼睛**钉死在待机基准值**上，压掉自主弹话/自由活动
+         随机播放的 smileL/smileR/wink/睁大眼… 那些眼部表情。
+         （眨眼的程序化开合走 ParamEye*Open，在 onFrame 里独立计算，不受影响——
+           所以看着还是活的，只是不会再「挑眉毛/单眼笑」。） */
+      if (gaze.active) {
+        if (PI.ParamEyeLSmile) setP('ParamEyeLSmile', baseOf('ParamEyeLSmile'))
+        if (PI.ParamEyeRSmile) setP('ParamEyeRSmile', baseOf('ParamEyeRSmile'))
+        if (PI.ParamAngleZ) setP('ParamAngleZ', 0)   // 歪头等特效角度也收回，只留跟随
+      }
+      gy.k = gaze.k; gy.ux = ux; gy.uy = uy; gy.tAX = tAX; gy.tAY = tAY
+    }
+
+    /* ★★ 锁定的常驻表情（需求6）—— 必须写在**这一帧的最后**，
+       才能压过自由活动 / 点击反应 / 眨眼恢复出来的值。
+       ⚠ 刻意**不碰** ParamEye*Open：眨眼是程序化算的，锁「闭眼微笑」时
+         那个 0 由招式参数给出，而锁「半眯」时也只改 Smile，不影响自然眨眼。
+       ⚠ 也不碰 ParamAngleX/Y —— 那是 gaze 追随的地盘，锁表情时照样能转头看人。 */
+    if (lockedAct && lockedAct.length) {
+      for (var li = 0; li < lockedAct.length; li++) {
+        var lp = lockedAct[li]
+        /* ★ 2026-09-29 修正：ParamEye*Open 在中段已被算成 base*blink，
+           这里如果直接跳过，「闭眼微笑」就闭不上（实测 LO=RO=1）。
+           改为**与当前值取 min** —— 眨眼要闭时闭，锁定要闭时也闭。 */
+        if (lp.id === 'ParamEyeLOpen' || lp.id === 'ParamEyeROpen') {
+          var curO = readP(lp.id)
+          var lockO = lp.v
+          if (curO === null || lockO < curO) setP(lp.id, lockO)
+          continue
+        }
+        /* 已经写过的静态参数就让它赢（招式正在演的时候不抢戏） */
+        if (vals[lp.id] === undefined) setP(lp.id, lp.v)
+      }
+    }
+  }
+  /* 上面 gaze 段的转储容器（写在函数外，供 __holdDebug 读，避免每帧重新声明） */
+  var gy = { x: 0, y: 0, k: 0, tAX: 0, tAY: 0, ux: 0, uy: 0 }
+
+  /* ---------------- 自主弹话 / 自由活动 ---------------- */
+  function dateKey() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() }
+  function periodNow() {
+    var d = new Date(), m = d.getHours() * 60 + d.getMinutes()
+    var mm = m < 300 ? m + 1440 : m
+    for (var i = 0; i < TALK_PERIODS.length; i++) {
+      if (mm >= TALK_PERIODS[i].from && mm <= TALK_PERIODS[i].to) return TALK_PERIODS[i]
+    }
+    return TALK_PERIODS[1]
+  }
+  function loadSeen() {
+    try {
+      var s = localStorage.getItem('pet.talk.seen')
+      if (s) { var o = JSON.parse(s); RT.seenDate = o.d || ''; RT.seen = o.k || {} }
+    } catch (e) { }
+  }
+  function saveSeen() {
+    try { localStorage.setItem('pet.talk.seen', JSON.stringify({ d: RT.seenDate, k: RT.seen })) } catch (e) { }
+  }
+  function stepTalk(t) {
+    if (RT.talkNext === 0) { RT.talkNext = t + 10; return }
+    if (t < RT.talkNext) return
+    if (RT.play) { RT.talkNext = t + 3; return }
+    var today = dateKey()
+    if (RT.seenDate !== today) { RT.seenDate = today; RT.seen = {} }
+    var pd = periodNow()
+    if (!RT.seen[pd.key]) {
+      RT.seen[pd.key] = 1
+      saveSeen()
+      if (startPlay(seqOf(pd.greetActs), pick(pd.greet), false)) { RT.talkNext = t + rint(120, 420); return }
+    }
+    var pool = pd.moods.concat(TALK_ANY)
+    var mood = pool[Math.floor(Math.random() * pool.length)]
+    startPlay(seqOf(mood.acts), pick(mood.say), false)
+    RT.talkNext = t + rint(120, 420)
+  }
+  function stepFree(t) {
+    if (RT.play) return
+    if (t < RT.quietUntil) return
+    if (RT.freeAt === 0) { RT.freeAt = t + 2.5; return }
+    if (t < RT.freeAt) return
+    var name = FREE_DEFAULT[Math.floor(Math.random() * FREE_DEFAULT.length)]
+    var list = stepsOf(name)
+    if (!list) { RT.freeAt = t + 2; return }
+    startPlay(list, null, false)
+    playSfx('soft')                       // 自己做小动作时也轻轻响一下（音乐关掉时是静音）
+    RT.freeAt = t + totalDur(list) + rint(1.8, 5.5)
+  }
+  function tick(dt) { if (!model) return; var t = now(); stepTalk(t); stepFree(t); onFrame(dt) }
+
+  /* ---------------- 气泡 ---------------- */
+  function showBubble(text) {
+    if (!text) return
+    var ms = Math.max(2600, Math.min(7000, text.length * 230))
+    bubble.textContent = text
+    bubble.classList.add('on')
+    placeBubble()
+    clearTimeout(bubbleTimer)
+    bubbleTimer = setTimeout(function () { bubble.classList.remove('on') }, ms)
+  }
+  /* 气泡跟着角色头顶走 */
+  function placeBubble() {
+    if (!model) return
+    var W = app.screen.width, H = app.screen.height
+    /* ★ model.width 本身已经含了 scale，不能再乘一次 —— 乘了会把气泡甩到屏幕边上。
+       统一用 layout() 里算好的 RT.mw / RT.mh（= 模型本地尺寸 × 缩放） */
+    var w = RT.mw, h = RT.mh
+    if (!w || !h) { var lb = model.getLocalBounds(); w = lb.width * model.scale.x; h = lb.height * model.scale.y }
+    var cx = clamp(model.x + w / 2, 24, W - 24)
+    var belowTop = model.y                       // 角色头顶距视口顶部
+    var bottom = H - belowTop + 10               // 用 bottom 定位：气泡底边在头顶上方 10px
+    bottom = clamp(bottom, 8, H - safeTop() - 54)
+    bubble.style.left = cx + 'px'
+    bubble.style.bottom = bottom + 'px'
+  }
+
+  /* ---------------- 安全区（刘海 / Home 横条）---------------- */
+  function safeTop() {
+    var cs = getComputedStyle(safeEl)
+    return parseFloat(cs.paddingTop) || 0
+  }
+  function safeBottom() {
+    var cs = getComputedStyle(safeEl)
+    return parseFloat(cs.paddingBottom) || 0
+  }
+
+  /* ---------------- 布局 ---------------- */
+  var FIT_W = 0.94, FIT_H = 0.62
+  var ZOOM_MIN = 0.5, ZOOM_MAX = 2.2
+
+  function layout() {
+    if (!model) return
+    var W = app.screen.width, H = app.screen.height
+    model.scale.set(1)
+    var bw = model.width, bh = model.height
+    if (!bw || !bh) return
+
+    var base = Math.min(W * FIT_W / bw, H * FIT_H / bh)
+    view.zoom = clamp(view.zoom, ZOOM_MIN, ZOOM_MAX)
+    var s = base * view.zoom
+    model.scale.set(s)
+
+    var w = bw * s, h = bh * s
+    RT.mw = w; RT.mh = h
+    var x = (W - w) / 2 + view.ox
+    var y = (H - h) - safeBottom() + view.oy
+    /* 别让它跑出屏幕外太多 */
+    x = clamp(x, -w * 0.45, W - w * 0.55)
+    y = clamp(y, -h * 0.25, H - h * 0.30)
+    view.ox = x - (W - w) / 2
+    view.oy = y - ((H - h) - safeBottom())
+
+    model.x = x
+    RT.baseY = model.y = y
+    placeBubble()
+  }
+  function saveView() {
+    try { localStorage.setItem('pet.view', JSON.stringify(view)) } catch (e) { }
+  }
+  function loadView() {
+    try {
+      var s = localStorage.getItem('pet.view')
+      if (s) { var o = JSON.parse(s); if (o && typeof o === 'object') { view.zoom = o.zoom || 1; view.ox = o.ox || 0; view.oy = o.oy || 0 } }
+    } catch (e) { }
+  }
+
+  /* ---------------- 触摸：轻戳 / 单指拖 / 双指缩放 ---------------- */
+  var pts = {}, nPts = 0
+  var drag = null, pinch = null, tapCandidate = null
+
+  function dist(a, b) { var dx = a.x - b.x, dy = a.y - b.y; return Math.sqrt(dx * dx + dy * dy) }
+
+  document.addEventListener('pointerdown', function (e) {
+    if (e.target && e.target.closest && e.target.closest('#bar')) return
+    pts[e.pointerId] = { x: e.clientX, y: e.clientY }
+    nPts = Object.keys(pts).length
+    if (nPts === 1) {
+      drag = { sx: e.clientX, sy: e.clientY, ox: view.ox, oy: view.oy, moved: false }
+      tapCandidate = { t: now(), x: e.clientX, y: e.clientY }
+      /* 视线追随模式：手指一落下，脑袋就朝它转过去（位置一点不动） */
+      if (holdMode === 'gaze') {
+        gaze.active = true
+        gaze.tx = e.clientX; gaze.ty = e.clientY
+      }
+    } else if (nPts === 2) {
+      var ids = Object.keys(pts)
+      pinch = { d0: dist(pts[ids[0]], pts[ids[1]]), z0: view.zoom }
+      drag = null
+      gaze.active = false        // 双指缩放时不再追随视线
+    }
+  }, { passive: true })
+
+  document.addEventListener('pointermove', function (e) {
+    if (!pts[e.pointerId]) return
+    pts[e.pointerId].x = e.clientX
+    pts[e.pointerId].y = e.clientY
+    var ids = Object.keys(pts)
+    if (ids.length >= 2) {
+      pinch = pinch || { d0: dist(pts[ids[0]], pts[ids[1]]), z0: view.zoom }
+      var d1 = dist(pts[ids[0]], pts[ids[1]])
+      if (pinch.d0 > 8) {
+        view.zoom = clamp(pinch.z0 * (d1 / pinch.d0), ZOOM_MIN, ZOOM_MAX)
+        layout()
+      }
+      return
+    }
+    if (drag) {
+      var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 8) drag.moved = true
+      /* 视线追随模式：手指滑到哪，脑袋就转到哪 —— 身体、位置、缩放全部不动。
+         提前 return，绝不进下面那段改 view.ox/oy 的分支。 */
+      if (holdMode === 'gaze') {
+        gaze.tx = e.clientX; gaze.ty = e.clientY
+        return
+      }
+      if (drag.moved) {
+        view.ox = drag.ox + dx
+        view.oy = drag.oy + dy
+        layout()
+      }
+    }
+  }, { passive: true })
+
+  function endPointer(e) {
+    if (!pts[e.pointerId]) return
+    /* 没拖动过、时间也短 → 算「戳一下」 */
+    if (tapCandidate && nPts === 1 && drag && !drag.moved && now() - tapCandidate.t < 0.6) {
+      /* ★ 目标不能是顶栏或表情面板 —— 触屏上手指粗，容易「点按钮顺带戳到角色」 */
+      var tg = e.target
+      var isUI = tg && tg.closest && (tg.closest('#bar') || tg.closest('#emojiPanel'))
+      if (!isUI) { unlockAudio(); window.petPoke() }
+    }
+    delete pts[e.pointerId]
+    nPts = Object.keys(pts).length
+    if (nPts === 0) {
+      /* 松手：视线慢慢回到正前方（不是瞬移），身体自始至终没动过 */
+      if (gaze.active) gaze.active = false
+      drag = null; pinch = null; tapCandidate = null; saveView()
+    }
+  }
+  document.addEventListener('pointerup', endPointer, { passive: true })
+  document.addEventListener('pointercancel', endPointer, { passive: true })
+
+  /* iOS 的那些默认手势全关掉：橡皮筋、双击放大、长按菜单 */
+  document.addEventListener('touchmove', function (e) { e.preventDefault() }, { passive: false })
+  ;['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) {
+    document.addEventListener(t, function (e) { e.preventDefault() }, { passive: false })
+  })
+  document.addEventListener('contextmenu', function (e) { e.preventDefault() })
+
+  /* =========================================================================
+     音乐与音效（需求5）
+     —— 用户要求「导入一个欢快的轻音乐」。这里**不下载任何音频文件**，
+        改用 Web Audio 现场合成：八分音符琶音 + 分解和弦垫底 + 偶发铃声，
+        C 大调五声音阶（C-D-E-G-A）怎么弹都不难听，循环 8 小节。
+        好处：零体积、零版权风险、断网也能响；而且是真·程序化，不是采样。
+     ★ iOS / Safari 硬规矩：AudioContext 必须在**用户手势里**创建或 resume，
+       否则永远 suspended 不出声。所以引擎是「第一次点 ♪ 才建」。
+     ========================================================================= */
+  var Mus = {
+    ctx: null, on: false, master: null, musicGain: null, sfxGain: null,
+    bar: 0, nextT: 0, timer: 0, sched: {}, step: 0, BPM: 112, started: false,
+    noiseBuf: null,
+  }
+  try { Mus.on = localStorage.getItem('pet.music') === '1' } catch (e) { }
+
+  function MusCtx() {
+    if (Mus.ctx) return Mus.ctx
+    var AC = window.AudioContext || window.webkitAudioContext
+    if (!AC) return null
+    try { Mus.ctx = new AC() } catch (e) { return null }
+    var c = Mus.ctx
+    Mus.master = c.createGain(); Mus.master.gain.value = 0.9
+    Mus.master.connect(c.destination)
+    Mus.musicGain = c.createGain(); Mus.musicGain.gain.value = 0
+    Mus.musicGain.connect(Mus.master)
+    Mus.sfxGain = c.createGain(); Mus.sfxGain.gain.value = 0.5
+    Mus.sfxGain.connect(Mus.master)
+    /* 一小段白噪声，给「啵」「沙」这类打击感用 */
+    try {
+      var n = c.sampleRate * 0.5, buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0)
+      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n)
+      Mus.noiseBuf = buf
+    } catch (e) { }
+    return c
+  }
+
+  /* 一个音：osc → gain(ADSR) → 目标 */
+  function tone(freq, t, dur, type, vol, dest) {
+    var c = Mus.ctx; if (!c) return
+    var o = c.createOscillator(), g = c.createGain()
+    o.type = type || 'sine'
+    o.frequency.setValueAtTime(freq, t)
+    var v = Math.max(0.0001, vol)
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(v, t + Math.min(0.02, dur * 0.2))
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    o.connect(g); g.connect(dest || Mus.sfxGain)
+    o.start(t); o.stop(t + dur + 0.03)
+    return o
+  }
+  /* 铃声：两个不谐和分音 + 快速衰减，比单纯正弦更「叮」 */
+  function bell(freq, t, dur, vol, dest) {
+    var c = Mus.ctx; if (!c) return
+    tone(freq, t, dur, 'sine', vol, dest)
+    tone(freq * 2.756, t, dur * 0.6, 'sine', vol * 0.30, dest)
+    tone(freq * 5.404, t, dur * 0.32, 'sine', vol * 0.12, dest)
+  }
+  function noise(t, dur, vol, freq, dest) {
+    var c = Mus.ctx; if (!c || !Mus.noiseBuf) return
+    var src = c.createBufferSource(); src.buffer = Mus.noiseBuf
+    var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq || 1800; bp.Q.value = 1.2
+    var g = c.createGain()
+    g.gain.setValueAtTime(vol, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    src.connect(bp); bp.connect(g); g.connect(dest || Mus.sfxGain)
+    src.start(t); src.stop(t + dur + 0.02)
+  }
+
+  /* ---- 曲子：C 大调五声音阶，2 小节一个乐句，4 个乐句循环 ---- */
+  var PENTA = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00]
+  /* 每小节 8 个八分音符；0 = 不弹（留白也是音乐） */
+  var MELODY = [
+    [0, 5, 0, 7,  0, 5, 4, 2],  /* 上句 */
+    [0, 4, 0, 6,  7, 5, 4, 2],
+    [0, 7, 0, 8,  7, 5, 6, 4],  /* 下句 */
+    [5, 4, 2, 4,  0, 2, 0, 0],
+  ]
+  /* 每小节一个和弦（分解成 3 个音垫在底下） */
+  var CHORDS = [
+    [261.63, 329.63, 392.00],   // C
+    [349.23, 440.00, 523.25],   // F
+    [392.00, 493.88, 587.33],   // G
+    [261.63, 329.63, 392.00],   // C
+  ]
+  var BAR_SEC = 4 * 60 / Mus.BPM        // 一小节 = 4 拍
+
+  /* 排一个八分音符的活；step 是全局步进（0..31 为一轮 4 小节） */
+  function scheduleStep(step, t) {
+    var barI = Math.floor(step / 8) % 4
+    var melI = Math.floor(step / 8) % MELODY.length
+    var idx = step % 8
+    var n = MELODY[melI][idx]
+    /* 主旋律：三角波，稍微软一点，音量跟着乐句起伏 */
+    if (n > 0) {
+      var swell = (Math.floor(step / 16) % 2 === 0) ? 1.0 : 0.82
+      tone(PENTA[n], t, 0.42, 'triangle', 0.17 * swell, Mus.musicGain)
+    }
+    /* 分解和弦：每小节的第 1/3/5/7 个八分音符各响一个和弦音，往下走 */
+    var ci = [0, 1, 2, 1][idx >> 1]
+    tone(CHORDS[barI][ci] / 2, t, 0.7, 'sine', 0.085, Mus.musicGain)
+    /* 低音：每小节头一个音 */
+    if (idx === 0) tone(CHORDS[barI][0] / 4, t, 1.6, 'sine', 0.13, Mus.musicGain)
+    /* 铃声点缀：乐句的第二小节尾巴上撒一颗，制造「欢快」的亮色 */
+    if (idx === 6 && melI % 2 === 1) bell(PENTA[(n || 5) + 2] || 1046, t, 0.9, 0.075, Mus.musicGain)
+  }
+
+  /* 前瞻调度：每 25ms 看一眼，把未来 0.25s 内的音符都排出去（不受主线程卡顿影响） */
+  function pump() {
+    if (!Mus.on || !Mus.ctx) return
+    var c = Mus.ctx
+    if (Mus.nextT < c.currentTime) Mus.nextT = c.currentTime + 0.05
+    while (Mus.nextT < c.currentTime + 0.25) {
+      scheduleStep(Mus.step, Mus.nextT)
+      Mus.step = (Mus.step + 1) % 32
+      Mus.nextT += (BAR_SEC / 8)
+    }
+  }
+
+  function musicOn(silent) {
+    var c = MusCtx(); if (!c) return false
+    if (c.state === 'suspended') { try { c.resume() } catch (e) { } }
+    Mus.on = true
+    Mus.started = true
+    Mus.nextT = c.currentTime + 0.08
+    Mus.musicGain.gain.cancelScheduledValues(c.currentTime)
+    Mus.musicGain.gain.setValueAtTime(Math.max(0.0001, Mus.musicGain.gain.value), c.currentTime)
+    Mus.musicGain.gain.exponentialRampToValueAtTime(0.6, c.currentTime + 0.9)   // 淡入，别突然炸
+    if (!Mus.timer) Mus.timer = setInterval(pump, 25)
+    pump()
+    try { localStorage.setItem('pet.music', '1') } catch (e) { }
+    if (!silent) showBubble('♪ 给你放点轻快的——音量合适吗？')
+    return true
+  }
+  function musicOff(silent) {
+    Mus.on = false
+    if (Mus.ctx) {
+      var c = Mus.ctx, t = c.currentTime
+      Mus.musicGain.gain.cancelScheduledValues(t)
+      Mus.musicGain.gain.setValueAtTime(Math.max(0.0001, Mus.musicGain.gain.value), t)
+      Mus.musicGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35)
+    }
+    if (Mus.timer) { clearInterval(Mus.timer); Mus.timer = 0 }
+    try { localStorage.setItem('pet.music', '0') } catch (e) { }
+    if (!silent) showBubble('好，安静一会儿——想听再点 ♪')
+    return true
+  }
+
+  /* ---------------- 互动音效（需求5：点击互动有音效） ---------------- */
+  /* 按招式性格挑音色：跳起来的「咻」、吓一跳的「当当」、撒娇的软「啵」… */
+  var SFX = {
+    /* 默认：清脆两音上行 —— 「叮咚」 */
+    tap:   function (t) { tone(880, t, 0.10, 'triangle', 0.30); tone(1318.5, t + 0.075, 0.26, 'triangle', 0.22) },
+    hop:   function (t) { var o = Mus.ctx.createOscillator(), g = Mus.ctx.createGain()
+                           o.type = 'sine'; o.frequency.setValueAtTime(300, t)
+                           o.frequency.exponentialRampToValueAtTime(900, t + 0.18)
+                           g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.24, t + 0.03)
+                           g.gain.exponentialRampToValueAtTime(0.0001, t + 0.30)
+                           o.connect(g); g.connect(Mus.sfxGain); o.start(t); o.stop(t + 0.34) },
+    /* 吓一跳：快速两下高音 + 一点噪声 */
+    startle: function (t) { tone(1568, t, 0.09, 'square', 0.16); tone(1568, t + 0.11, 0.16, 'square', 0.13); noise(t, 0.16, 0.16, 3200) },
+    /* 温柔：低一点的软「啵」 */
+    soft:  function (t) { tone(523.25, t, 0.20, 'sine', 0.26); tone(659.25, t + 0.10, 0.30, 'sine', 0.18) },
+    /* 调皮：三个音跳跳 */
+    cheeky: function (t) { tone(659.25, t, 0.09, 'triangle', 0.24); tone(880, t + 0.085, 0.09, 'triangle', 0.22); tone(1174.7, t + 0.17, 0.22, 'triangle', 0.19) },
+    /* 无奈：两音下行 */
+    shrug: function (t) { tone(587.33, t, 0.13, 'sine', 0.22); tone(415.30, t + 0.11, 0.28, 'sine', 0.19) },
+    /* 开 / 关音乐的提示音 */
+    ui:    function (t) { tone(1046.5, t, 0.09, 'sine', 0.22) },
+    uiOff: function (t) { tone(392, t, 0.12, 'sine', 0.20) },
+  }
+  var ACT_SFX = {
+    shyHide: 'soft', tiltStare: 'tap', nodYes: 'tap', shakeNo: 'shrug', winkBack: 'cheeky',
+    coverFace: 'shrug', peek: 'soft', startle: 'startle', wiggle: 'cheeky', happyMelt: 'soft',
+    lookUpAt: 'soft', smirkL: 'cheeky', pokeBack: 'cheeky', shyPair: 'soft',
+  }
+  function playSfx(name) {
+    if (!Mus.on || !Mus.ctx || !Mus.sfxGain) return          // 静音时不吵人
+    if (Mus.ctx.state === 'suspended') return
+    var f = SFX[name] || SFX.tap
+    try { f(Mus.ctx.currentTime + 0.001) } catch (e) { }
+  }
+
+  /* ---------------- 表情栏（需求6） ----------------
+     用户原话：「把互动时的表情保存为可固定选择的」。
+     做法：把点击反应（REACT_LIB + REACT_COMBOS）做成一张常驻面板，
+        · **轻点** → 像戳它一下那样演一次（临时，演完回自由活动）
+        · **长按** → 常驻锁定：之后一直保持这个表情（每帧写参数，盖住自由活动），
+                   再长按同一条（或点同一条的「已锁定」提示）取消。
+     ★ 锁定态要在 onFrame 里**排在最后**写，才能压过自由活动与眨眼 ——
+       但眨眼必须留着（锁「闭眼笑」时就该一直闭着眼，那是用户要的）。
+     -------------------------------------------------------------------- */
+  var REACT_ORDER = [
+    ['happyMelt', '闭眼微笑'], ['tiltStare', '歪头睁大眼'], ['startle', '吓一跳'],
+    ['peek', '偷看你'], ['winkBack', '眨回去'], ['smirkL', '单眼笑'],
+    ['lookUpAt', '抬头看你'], ['nodYes', '点头'], ['shakeNo', '摇头'],
+    ['wiggle', '扭一扭'], ['shyHide', '闭眼快摇'], ['coverFace', '低头捂脸'],
+    ['pokeBack', '回敬 wink'], ['shyPair', '捂脸再偷看'],
+  ]
+  var emojiLock = null         // 锁定的招式名（null = 不锁）
+  var lockedAct = null         // 编译好的常驻参数
+  try { emojiLock = localStorage.getItem('pet.emoji') || null } catch (e) { }
+  if (emojiLock && !ALL_ACTS[emojiLock] && !ALL_COMBOS[emojiLock]) emojiLock = null
+
+  var panelEl = document.getElementById('emojiPanel')
+  var items = {}               // name -> button
+
+  function buildEmojiPanel() {
+    for (var i = 0; i < REACT_ORDER.length; i++) {
+      ;(function (name, label) {
+        var b = document.createElement('button')
+        b.className = 'item'
+        b.type = 'button'
+        b.innerHTML = '<span>' + label + '</span><span class="pin">长按锁定</span>'
+        /* 轻点 = 演一次 */
+        b.addEventListener('click', function () { emojiTap(name) })
+        /* 长按 = 锁定 / 解锁（触屏与鼠标统一走 pointer，450ms 阈值） */
+        var lp = null, long = false
+        b.addEventListener('pointerdown', function () {
+          long = false
+          lp = setTimeout(function () { long = true; emojiPin(name) }, 450)
+        })
+        var cancel = function () { if (lp) { clearTimeout(lp); lp = null } }
+        b.addEventListener('pointerup', function () {
+          cancel()
+          if (long) { b.dataset.long = '1'; setTimeout(function () { delete b.dataset.long }, 50) }
+        })
+        b.addEventListener('pointerleave', cancel)
+        b.addEventListener('pointercancel', cancel)
+        /* 长按结束后的那次 click 要吞掉，否则会「锁定完又演一次」 */
+        b.addEventListener('click', function (e) { if (b.dataset.long) { e.stopPropagation(); e.preventDefault() } }, true)
+        panelEl.appendChild(b)
+        items[name] = b
+      })(REACT_ORDER[i][0], REACT_ORDER[i][1])
+    }
+    renderEmojiPanel()
+  }
+  function lockParamsOf(name) {
+    /* 组合招取第一步的参数当常驻表情（多步没法「常驻」） */
+    var tpl = ALL_ACTS[name]
+    if (!tpl && ALL_COMBOS[name]) tpl = ALL_ACTS[ALL_COMBOS[name].steps[0]]
+    if (!tpl) return null
+    var a = compile(tpl, name + '·lock')
+    if (!a || !a.params.length) return null
+    /* 常驻态不要 sway（那是「演」用的摆动），只要静态表情 */
+    return a.params
+  }
+  /* ★ 2026-09-29 修正：启动时从 localStorage 恢复了 emojiLock，
+     但 lockedAct 从没被重建 —— 结果刷新后按钮显示「已锁定」，
+     参数却没写进去（或只写了组合招第一步的一半）。
+     这里在模型就绪后补上重建，保证「锁定的表情」真的生效。 */
+  function restoreLockedAct() {
+    if (!emojiLock) { lockedAct = null; return }
+    var p = lockParamsOf(emojiLock)
+    if (!p) { emojiLock = null; lockedAct = null; return }
+    lockedAct = p
+    renderEmojiPanel()
+  }
+
+  function emojiPin(name) {
+    if (emojiLock === name) {                      // 再长按 → 解锁
+      /* ★ 2026-09-29：解锁时把刚才被常驻写死的参数**显式复位到默认**，
+         否则它们会停在最后一帧的值上（例如 Smile 卡在 1 或者左右不等），
+         在静止态看上去就像「表情不对 / 左右反了」。 */
+      if (lockedAct) for (var qi = 0; qi < lockedAct.length; qi++) {
+        var qid = lockedAct[qi].id
+        if (PI[qid]) setP(qid, PI[qid].def)
+      }
+      emojiLock = null; lockedAct = null
+      try { localStorage.removeItem('pet.emoji') } catch (e) { }
+      showBubble('好啦，表情自由了～')
+      playSfx('uiOff')
+    } else {
+      var p = lockParamsOf(name)
+      if (!p) { showBubble('这个表情没法定住，换一个试试？'); return }
+      emojiLock = name; lockedAct = p
+      try { localStorage.setItem('pet.emoji', name) } catch (e) { }
+      var lb = ''
+      for (var i = 0; i < REACT_ORDER.length; i++) if (REACT_ORDER[i][0] === name) lb = REACT_ORDER[i][1]
+      showBubble('「' + lb + '」定住啦，再长按一下就取消。')
+      playSfx('ui')
+      RT.play = null                               // 停掉正在演的，免得打架
+    }
+    renderEmojiPanel()
+  }
+  function emojiTap(name) {
+    if (!model) return
+    var list = stepsOf(name)
+    if (!list) return
+    var hop = true, tpl = ALL_ACTS[name]
+    if (tpl && tpl.hop === false) hop = false
+    RT.hopAmp = (tpl && isFinite(Number(tpl.hopAmp))) ? Number(tpl.hopAmp) : 22
+    startPlay(list, null, hop)                     // 演一次不说台词，专注看表情
+    playSfx(ACT_SFX[name] || 'tap')
+  }
+  function renderEmojiPanel() {
+    for (var k in items) {
+      var on = (emojiLock === k)
+      items[k].classList.toggle('on', on)
+      items[k].lastChild.textContent = on ? '已锁定' : '长按锁定'
+    }
+  }
+
+  /* ---------------- 工具栏 ---------------- */
+  document.getElementById('btnReset').addEventListener('click', function () {
+    view.zoom = 1; view.ox = 0; view.oy = 0
+    gaze.active = false
+    layout(); saveView()
+    playSfx('ui')
+  })
+
+  /* =========================================================================
+     顶栏按钮（需求3/4/5/6）
+       模式键 ✋ ⇄ 👁 ：拖动 / 吸引转头（这是需求4要的「切换按键」）
+       音乐键 ♪      ：欢快轻音乐 开 / 关
+       表情键 😊     ：展开表情栏
+     ★ 手机 / 平板上按钮都做到 44x44，手指点得准；每个切换都给一句气泡反馈，
+       不然触屏上「点了没反应」的错觉很容易让人以为坏了。
+     ========================================================================= */
+  var btnHold = document.getElementById('btnHold')
+  function renderHoldBtn() {
+    var on = holdMode === 'gaze'
+    btnHold.classList.toggle('on', on)
+    btnHold.textContent = on ? '👁' : '✋'
+    btnHold.title = on ? '吸引转头：手指按哪儿，它转头看哪儿' : '拖拽：按住就能把它挪走'
+  }
+  btnHold.addEventListener('click', function () {
+    holdMode = holdMode === 'gaze' ? 'drag' : 'gaze'
+    if (holdMode === 'drag') gaze.active = false
+    saveHold(); renderHoldBtn()
+    playSfx('ui')
+    showBubble(holdMode === 'gaze'
+      ? '好，你手指按哪儿，我就转头看哪儿～'
+      : '嗯，按住就能拖着我走啦')
+  })
+  renderHoldBtn()
+
+  /* 音乐开 / 关（需求5）。★ 先建 AudioContext 再放音 —— iOS 要求在手势里做。 */
+  var btnMusic = document.getElementById('btnMusic')
+  function renderMusicBtn() {
+    btnMusic.classList.toggle('on', Mus.on)
+    btnMusic.textContent = Mus.on ? '♫' : '♪'
+    btnMusic.title = Mus.on ? '轻音乐：开（点一下关掉）' : '轻音乐：关（点一下播放）'
+  }
+  btnMusic.addEventListener('click', function () {
+    if (Mus.on) { musicOff(false); playSfx('uiOff') }
+    else { musicOn(false); playSfx('ui') }
+    renderMusicBtn()
+  })
+  /* 第一次进来如果记着「上次是开着的」，**不自动播**（浏览器会拦），
+     改成把按钮点亮 + 提示一下，等用户点一下屏幕就恢复 —— 这是 iOS 上唯一可行的做法。 */
+  if (Mus.on) { Mus.on = false; Mus.started = false; Mus.wantResume = true }
+  renderMusicBtn()
+
+  /* 表情栏开 / 关（需求6） */
+  var btnEmoji = document.getElementById('btnEmoji')
+  btnEmoji.addEventListener('click', function () {
+    var on = !panelEl.classList.contains('on')
+    panelEl.classList.toggle('on', on)
+    btnEmoji.classList.toggle('on', on)
+    playSfx('ui')
+    if (on) { renderEmojiPanel(); hintEl.classList.add('off') }
+  })
+  /* 点面板以外的地方收起面板（触屏上很自然的习惯） */
+  document.addEventListener('pointerdown', function (e) {
+    if (!panelEl.classList.contains('on')) return
+    var t = e.target
+    if (t && t.closest && (t.closest('#emojiPanel') || t.closest('#btnEmoji'))) return
+    panelEl.classList.remove('on'); btnEmoji.classList.remove('on')
+  }, { passive: true })
+
+  buildEmojiPanel()
+
+  /* ★ 有音乐待恢复时，用户的第一次触摸就把它续上（iOS 手势解锁） */
+  function unlockAudio() {
+    if (Mus.wantResume) { Mus.wantResume = false; musicOn(true); renderMusicBtn() }
+    else if (Mus.ctx && Mus.ctx.state === 'suspended') { try { Mus.ctx.resume() } catch (e) { } }
+  }
+
+  /* ---------------- 角色加载 / 切换 ---------------- */
+  function probe() {
+    PI = {}
+    var n = core.getParameterCount()
+    /* ★ Cubism 5 的 coreModel 没有 getParameterId(i)，只有 getParameterIndex(id)。
+       参数名列表藏在 core._model.parameters.ids 里；拿不到就退化成「已知名字反查」。 */
+    var ids = null
+    try { ids = core._model && core._model.parameters && core._model.parameters.ids } catch (e) { }
+    var got = 0
+    if (ids && ids.length >= n) {
+      for (var i = 0; i < n; i++) {
+        PI[ids[i]] = { i: i, min: core.getParameterMinimumValue(i), max: core.getParameterMaximumValue(i), def: core.getParameterDefaultValue(i) }
+        got++
+      }
+    } else {
+      var known = ['ParamAngleX', 'ParamAngleY', 'ParamAngleZ', 'ParamBodyAngleX', 'ParamBodyAngleY',
+        'ParamBodyAngleZ', 'ParamBreath', 'ParamEyeLOpen', 'ParamEyeROpen',
+        'ParamEyeLSmile', 'ParamEyeRSmile', 'ParamEyeBallX', 'ParamEyeBallY',
+        'ParamBrowLY', 'ParamBrowRY', 'ParamMouthForm', 'ParamMouthOpenY']
+      for (var j = 0; j < known.length; j++) {
+        var idx = -1
+        try { idx = core.getParameterIndex(known[j]) } catch (e) { }
+        if (idx < 0) continue
+        PI[known[j]] = { i: idx, min: core.getParameterMinimumValue(idx), max: core.getParameterMaximumValue(idx), def: core.getParameterDefaultValue(idx) }
+        got++
+      }
+    }
+    if (!got) throw new Error('一个参数都没取到（coreModel 接口又变了？）')
+    setById = false
+    warn('参数 ' + got + ' 个：' + Object.keys(PI).join(','))
+  }
+
+  var loading = false
+  function loadModel(url) {
+    if (loading) return
+    loading = true
+    var oldVM = view.zoom, oldVO = { ox: view.ox, oy: view.oy }
+    PIXI.live2d.Live2DModel.from(url, { autoInteract: false })
+      .then(function (m) {
+        if (model) { try { model.destroy() } catch (e) { } ; app.stage.removeChildren() }
+        model = m
+        core = m.internalModel.coreModel
+        app.stage.addChild(m)
+        probe()
+        /* ★ 2026-09-29 修正：原来把双眼 Smile 硬钉成 1，onFrame 每帧
+           都会用 baseOf() 把它抬到 1，于是任何写了 0 的招式
+           （面无表情 / 睁大眼睛 / 右眼笑…）都被顶回去，表现就是
+           「微笑和不微笑反了」。改为不预设，让各招式自己决定；
+           需要「平时就微笑」时由招式/锁定态显式给出。 */
+        idleBase = {}
+        for (var id in idleBase) if (!PI[id]) delete idleBase[id]
+        RT.autoBlink = !(m.internalModel.eyeBlink)
+        RT.play = null; RT.hop = -1
+        restoreLockedAct()      // ★ 重建上次锁定的表情（见函数注释）
+        if (oldVM) { view.zoom = oldVM; view.ox = oldVO.ox; view.oy = oldVO.oy }
+        layout()
+        if (!m.__hooked) {
+          m.__hooked = true
+          /* ★★ 钩子必须挂在 'afterMotionUpdate'，不能挂 'beforeModelUpdate' ★★
+             看 lib 里 internalModel.update() 的真实次序：
+               emit('beforeMotionUpdate') → motionManager.update → emit('afterMotionUpdate')
+               → coreModel.saveParameters()          ← 快照在这里拍
+               → eyeBlink/updateFocus/updateNaturalMovements/physics/pose 各自写参数
+               → emit('beforeModelUpdate')           ← 我原来挂这儿
+               → coreModel.update()
+               → coreModel.loadParameters()          ← ★ 把参数**全部还原**成快照值
+             所以挂在 beforeModelUpdate 里写的参数，随后就被 loadParameters() 抹掉，
+             读回来永远等于默认值（ParamAngleX 一直是 0 就是这么来的）。
+             挂在 afterMotionUpdate 则写在 saveParameters() **之前**，
+             我们的值进快照 → 正常应用；代价是同一帧里的模型自带小动作
+             （focus/naturalMovements/pose）会被我们的值覆盖 —— 这正是想要的。
+             皮肤自带的眨眼（eyeBlink）也在这之后被程序化开合覆盖，
+             因为 RT.autoBlink 对本模型恒为 true。 */
+          m.internalModel.on('afterMotionUpdate', function () {
+            var ms = (app.ticker && isFinite(app.ticker.deltaMS)) ? app.ticker.deltaMS : 16
+            tick(Math.min(0.1, ms / 1000))
+          })
+        }
+        loading = false
+        window.petReady = true
+        document.title = 'READY'
+        warn('已加载 ' + url + ' | ' + Math.round(m.width) + 'x' + Math.round(m.height) +
+             ' | 眨眼 ' + (RT.autoBlink ? '程序化' : '模型自带'))
+      })
+      .catch(function (e) {
+        loading = false
+        fatal('模型加载失败：' + (e && e.message ? e.message : e))
+        document.title = 'FAIL'
+      })
+  }
+
+  loadView()
+  loadModel(MODELS[mi].url)
+
+  window.addEventListener('resize', function () { layout() })
+  window.addEventListener('orientationchange', function () { setTimeout(layout, 260) })
+
+  /* ---------------- 首屏提示 ---------------- */
+  try {
+    if (localStorage.getItem('pet.hint.shown')) hintEl.classList.add('off')
+    else setTimeout(function () {
+      hintEl.classList.add('off')
+      localStorage.setItem('pet.hint.shown', '1')
+    }, 7000)
+  } catch (e) { }
+
+  /* ---------------- 触屏能力自检（需求3） ----------------
+     iOS Safari 有一堆「网页手势」会跟桌宠抢触摸：双击缩放、长按弹菜单、
+     下拉橡皮筋、双指缩放整页。上面 CSS 关了一批、JS 又关了一批，这里跑一遍
+     自检，万一用户的浏览器不吃某一条，就直接在控制台说清是哪条 —— 
+     不静默失效是这个项目的老规矩。 */
+  function envCheck() {
+    var r = { touch: ('ontouchstart' in window) || navigator.maxTouchPoints > 0,
+              maxPoints: navigator.maxTouchPoints || 0, dpr: window.devicePixelRatio || 1,
+              standalone: !!(window.navigator.standalone || (window.matchMedia &&
+                            window.matchMedia('(display-mode: standalone)').matches)),
+              pointer: !!window.PointerEvent, audio: !!(window.AudioContext || window.webkitAudioContext) }
+    if (!r.pointer) warnOnce('这台设备的浏览器没有 PointerEvent，触摸可能不灵（建议升级浏览器）')
+    if (!r.audio) warnOnce('这台设备不支持 Web Audio，音乐键会点不出声')
+    warn('环境：触摸=' + r.touch + ' 最多' + r.maxPoints + '点  dpr=' + r.dpr +
+         ' 主屏App=' + r.standalone + ' 音频=' + r.audio)
+    return r
+  }
+  var ENV = envCheck()
+
+  /* ---------------- 对外接口（也给自动化验证用） ---------------- */
+  window.petPoke = function () {
+    if (!model) return false
+    var name = REACT_DEFAULT[Math.floor(Math.random() * REACT_DEFAULT.length)]
+    var list = stepsOf(name)
+    if (!list) return false
+    var hop = true, tpl = ALL_ACTS[name]
+    if (tpl && tpl.hop === false) hop = false
+    RT.hopAmp = (tpl && isFinite(Number(tpl.hopAmp))) ? Number(tpl.hopAmp) : 22
+    return startPlay(list, pick(ACT_SAY[name]), hop)
+  }
+  window.petSay = function (s) { showBubble(s) }
+  /* ---- 音乐（需求5）---- */
+  window.petMusic = function (m) {
+    if (m === true) musicOn(true); else if (m === false) musicOff(true)
+    else if (m === 'toggle') { if (Mus.on) musicOff(true); else musicOn(true) }
+    renderMusicBtn()
+    return Mus.on
+  }
+  window.petMusicInfo = function () {
+    return {
+      on: Mus.on, hasCtx: !!Mus.ctx, state: Mus.ctx ? Mus.ctx.state : 'none',
+      step: Mus.step, bar: Math.floor(Mus.step / 8) % 4, bpm: Mus.BPM,
+      gain: Mus.musicGain ? Math.round(Mus.musicGain.gain.value * 1000) / 1000 : null,
+      canAudio: !!(window.AudioContext || window.webkitAudioContext), wantResume: !!Mus.wantResume,
+    }
+  }
+  /* ---- 表情栏（需求6）---- */
+  window.petEmojiList = function () { return REACT_ORDER.map(function (a) { return { key: a[0], label: a[1] } }) }
+  window.petEmojiPin = function (name) { if (name === undefined) return emojiLock; emojiPin(name); return emojiLock }
+  window.petEmojiLocked = function () { return emojiLock }
+  window.petEmojiTap = function (name) { emojiTap(name); return true }
+  /* 锁定态下模型当前真的写了什么（验证「定住了」的硬判据） */
+  window.petEmojiApplied = function () {
+    if (!lockedAct) return null
+    var o = {}
+    for (var i = 0; i < lockedAct.length; i++) o[lockedAct[i].id] = readP(lockedAct[i].id)
+    return o
+  }
+  window.petEnv = function () { return ENV }
+  window.petIsReady = function () { return !!model }
+  window.petReset = function () { view.zoom = 1; view.ox = 0; view.oy = 0; layout(); saveView() }
+  /* 按住模式：给个编程入口（也方便自动化断言）。'follow' 是旧名，兼容成 'gaze'。 */
+  window.petHoldMode = function (m) {
+    if (m === 'follow') m = 'gaze'
+    if (m === 'drag' || m === 'gaze') { holdMode = m; if (m === 'drag') gaze.active = false; saveHold(); renderHoldBtn() }
+    return holdMode
+  }
+  window.__info = function () {
+    if (!model) return { ready: false }
+    return {
+      ready: true,
+      music: Mus.on, emojiLock: emojiLock,
+      iw: Math.round(app.screen.width), ih: Math.round(app.screen.height),
+      mx: Math.round(model.x), my: Math.round(model.y),
+      mw: Math.round(RT.mw || 0), mh: Math.round(RT.mh || 0),
+      zoom: view.zoom, model: MODELS[mi].name, params: Object.keys(PI).length,
+      hold: holdMode, camX: Math.round(centerX()),
+      bubble: bubble.classList.contains('on') ? bubble.textContent : '',
+    }
+  }
+  /* 角色静止时的中心 x，给验证用 */
+  function centerX() { return (app.screen.width - RT.mw) / 2 + view.ox + RT.mw / 2 }
+  /* 诊断入口（自动化排查用） */
+  window.__core = function () { return core }
+  window.__internal = function () { return model ? model.internalModel : null }
+  window.__baseOf = function (id) { return baseOf(id) }
+  window.__piDef = function (id) { return PI[id] ? PI[id].def : null }
+  window.__suspendPlays = function (on) {
+    if (on) { RT.__savedPlay = RT.play; RT.play = null; RT.__savedAuto = RT.autoBlink; RT.autoBlink = false }
+    else { RT.play = RT.__savedPlay || null; RT.autoBlink = !!RT.__savedAuto }
+    return true
+  }
+  function readP(id) {
+    if (!PI[id]) return null
+    /* getParameterValueByIndex 在部分 Cubism 5 core 上不存在 —— 用 getParameterIndex 反查 */
+    try { return core.getParameterValueById(id) } catch (e) { }
+    try { return core.getParameterValueByIndex(PI[id].i) } catch (e) { }
+    return null
+  }
+  /* 参数存在性 + 读写通路自检（排查「想让他转头却不动」时第一个该看的东西） */
+  window.__paramProbe = function () {
+    var names = ['ParamAngleX', 'ParamAngleY', 'ParamAngleZ', 'ParamEyeBallX', 'ParamEyeBallY',
+      'ParamBodyAngleX', 'ParamBodyAngleZ', 'ParamEyeLOpen', 'ParamEyeLSmile']
+    var o = { hasReadById: false, hasReadByIndex: false, list: [] }
+    try { core.getParameterValueById('ParamAngleX'); o.hasReadById = true } catch (e) { }
+    try { core.getParameterValueByIndex(0); o.hasReadByIndex = true } catch (e) { }
+    for (var i = 0; i < names.length; i++) {
+      var id = names[i]
+      o.list.push({
+        id: id,
+        inPI: !!PI[id],
+        min: PI[id] ? PI[id].min : null,
+        max: PI[id] ? PI[id].max : null,
+        def: PI[id] ? PI[id].def : null,
+        val: readP(id),
+      })
+    }
+    var all = []
+    for (var k in PI) all.push(k + '(' + PI[k].i + ':' + PI[k].min + '~' + PI[k].max + ' def' + PI[k].def + ')')
+    o.allNames = all
+    return o
+  }
+  /* 视线追随计算过程转储，排查用 */
+  window.__holdDebug = function () {
+    return {
+      hold: holdMode,
+      active: gaze.active, k: Math.round(gaze.k * 1000) / 1000,
+      tx: Math.round(gaze.tx), ty: Math.round(gaze.ty),
+      ux: Math.round(gy.ux * 1000) / 1000, uy: Math.round(gy.uy * 1000) / 1000,
+      tAX: Math.round(gy.tAX * 10) / 10, tAY: Math.round(gy.tAY * 10) / 10,
+      modelX: Math.round(model ? model.x : 0), modelY: Math.round(model ? model.y : 0),
+      baseY: Math.round(RT.baseY), viewOx: Math.round(view.ox), viewOy: Math.round(view.oy),
+      angleX: readP('ParamAngleX'), angleY: readP('ParamAngleY'), angleZ: readP('ParamAngleZ'),
+      lSmile: readP('ParamEyeLSmile'), rSmile: readP('ParamEyeRSmile'),
+      hasEyeBall: !!PI.ParamEyeBallX,      W: Math.round(app.screen.width), H: Math.round(app.screen.height),
+    }
+  }
+
+  /* =========================================================================
+     联网优先更新（需求2：网页随时联网更新，不会保留之前旧版本）
+     —— 只靠 sw.js 做 network-first 还不够：浏览器**本身的 HTTP 缓存**也会
+        把 index.html 留住，而且新 SW 装好之后要等所有页面关掉才生效。
+        所以这里三件事一起做：
+          ① register 时 updateViaCache:'none' → sw.js 自己也不许走 HTTP 缓存
+          ② 每次启动主动 reg.update() → 有新 SW 立刻装
+          ③ 新 SW 接管（controllerchange）→ **自动刷新一次**，用户看到的就是最新版
+        ★ 刷新只做一次（reloaded 标志），否则新旧 SW 互相抢会死循环刷新。
+     ========================================================================= */
+  if ('serviceWorker' in navigator) {
+    var reloaded = false
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloaded) return
+      reloaded = true
+      warn('检测到新版本，自动刷新一次')
+      location.reload()
+    })
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
+        try { reg.update() } catch (e) { }
+        /* 回到前台时再查一次：加到主屏幕的 PWA 常常是「切回来」而不是「重新打开」 */
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'visible') { try { reg.update() } catch (e) { } }
+        })
+      }).catch(function (e) {
+        console.log('[桌宠] 离线缓存没启用（不影响使用）：' + e.message)
+      })
+      /* 顺手兜一个「有网就直接拿最新的 index.html」：即使是第一次来、
+         SW 还没接管，也不会读到代理/CDN 上的旧壳。 */
+      fetch('index.html', { method: 'HEAD', cache: 'no-store' }).catch(function () { })
+    })
+  }
+})()
+</script>
+</body>
+</html>
