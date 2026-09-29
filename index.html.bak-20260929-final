@@ -209,8 +209,8 @@
 
   /* ---------------- 招式库（自由活动） ---------------- */
   var ACT_LIB = {
-    plain: { label: '面无表情', dur: 2.0, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
-    smile: { label: '微笑', dur: 2.6, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
+    plain: { label: '面无表情', dur: 2.0, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0 } },
+    smile: { label: '微笑', dur: 2.6, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
     smileL: { label: '左眼笑', dur: 2.4, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
     smileR: { label: '右眼笑', dur: 2.4, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
     grin: { label: '笑眯了眼', dur: 2.6, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamEyeLOpen: 0.45, ParamEyeROpen: 0.45, ParamMouthForm: 1 } },
@@ -218,13 +218,13 @@
     winkR: { label: '右眼眨一下', dur: 1.5, params: { ParamEyeROpen: 0, ParamEyeRSmile: 0, ParamEyeLSmile: 1, ParamMouthForm: 1 } },
     squintL: { label: '左眼半眯', dur: 2.2, params: { ParamEyeLOpen: 0.35, ParamEyeLSmile: 1, ParamEyeROpen: 1, ParamEyeRSmile: 0 } },
     squintR: { label: '右眼半眯', dur: 2.2, params: { ParamEyeROpen: 0.35, ParamEyeRSmile: 1, ParamEyeLOpen: 1, ParamEyeLSmile: 0 } },
-    wide: { label: '睁大眼睛', dur: 1.8, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamBrowLY: 0.7, ParamBrowRY: 0.7 } },
+    wide: { label: '睁大眼睛', dur: 1.8, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0, ParamBrowLY: 0.7, ParamBrowRY: 0.7 } },
     nod: { label: '点头', dur: 2.4, sway: [{ id: 'ParamAngleY', amp: 13, freq: 1.5 }] },
     shake: { label: '摇头', dur: 2.8, sway: [{ id: 'ParamAngleX', amp: 19, freq: 1.15 }] },
     wobble: { label: '晃脑', dur: 3.4, sway: [{ id: 'ParamAngleZ', amp: 14, freq: 0.85 }, { id: 'ParamBodyAngleZ', amp: 7, freq: 0.85 }] },
     swayBody: { label: '扭扭身子', dur: 3.6, sway: [{ id: 'ParamBodyAngleX', amp: 7, freq: 0.7 }, { id: 'ParamAngleX', amp: 11, freq: 0.7 }] },
     tilt: { label: '歪头看你', dur: 3.0, params: { ParamAngleZ: 17, ParamAngleX: -8, ParamEyeLOpen: 0.8, ParamEyeLSmile: 1, ParamEyeRSmile: 0 } },
-    lookUp: { label: '抬头望天', dur: 3.0, params: { ParamAngleY: 16, ParamAngleZ: -9, ParamEyeLOpen: 0.55, ParamEyeROpen: 0.55, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
+    lookUp: { label: '抬头望天', dur: 3.0, params: { ParamAngleY: -16, ParamAngleZ: -9, ParamEyeLOpen: 0.55, ParamEyeROpen: 0.55, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
     shy: { label: '有点不好意思', dur: 2.6, params: { ParamAngleX: -12, ParamAngleZ: 10, ParamEyeLOpen: 0.4, ParamEyeROpen: 0.4, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
   }
   var ACT_COMBOS = {
@@ -253,7 +253,7 @@
     winkBack: { label: '眨回去', dur: 1.0, in: 0.12, out: 0.3, hop: true,
       params: { ParamEyeLOpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 1 } },
     coverFace: { label: '低头捂脸', dur: 1.8, in: 0.25, out: 0.4, hop: false,
-      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamAngleY: -14, ParamAngleX: -8 } },
+      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamAngleY: 14, ParamAngleX: -8 } },
     peek: { label: '偷看你', dur: 1.7, in: 0.2, out: 0.4, hop: false,
       params: { ParamEyeLOpen: 0.45, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 0 },
       sway: [{ id: 'ParamAngleZ', amp: 4, freq: 0.5 }] },
@@ -267,7 +267,7 @@
       params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1 },
       sway: [{ id: 'ParamAngleZ', amp: 9, freq: 0.9 }] },
     lookUpAt: { label: '抬头看你', dur: 1.6, in: 0.2, out: 0.4, hop: false,
-      params: { ParamAngleY: 18, ParamAngleZ: -8, ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
+      params: { ParamAngleY: -18, ParamAngleZ: -8, ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
     smirkL: { label: '单眼笑', dur: 1.4, in: 0.18, out: 0.34, hop: true,
       params: { ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamAngleZ: 8 } },
     /* ★ 2026-09-29 新增：凶狠（双眼半眯）
@@ -366,7 +366,7 @@
   })
   var model = null, core = null
   var PI = {}
-  var idleBase = { ParamEyeLSmile: 1, ParamEyeRSmile: 1 }
+  var idleBase = {}
   var setById = false
 
   var RT = {
@@ -564,18 +564,18 @@
       if (ul > 1) { ux /= ul; uy /= ul }
 
       var tAX = ux * 27 * gaze.k          // 头 R<->L（模型 ±30，留 3 度余量不顶死）
-      var tAY = -uy * 27 * gaze.k         // 头 U<->D（模型 ±30，负值=低头、正值=抬头）
-      /* ★★ 2026-09-29 订正（几何量化 M 判据 + 用户实测双重确认）：
-         本模型 **ParamAngleY 负值 = 低头，正值 = 抬头**（与上面旧注释正相反）。
-         判据：帽子顶→眼睛归一化距离 M，抬头时 M 更小、低头时 M 更大；
-         参考图 向上 M=0.583 < 向下 M=0.620，网页版 AY=-27→M=0.614(低头侧)、
-         AY=+27→M=0.558(抬头侧) ⇒ 负=低头、正=抬头。
-         所以 uy<0（手指在头的上方）应当得到**正**的 tAY（抬头），即 tAY = -uy*27。
-         招式表 lookUp/lookUpAt/coverFace 的 sign 也已一并翻转，使标签与真实语义一致：
-             lookUp 「抬头望天」 → ParamAngleY: +16
-             lookUpAt「抬头看你」→ ParamAngleY: +18
-             coverFace「低头捂脸」→ ParamAngleY: -14
-         —— 此后一律以「负值=低头、正值=抬头」为准。 */
+      var tAY = uy * 27 * gaze.k          // 头 U<->D（模型 ±30）
+      /* ★★ 2026-09-29 更正（上一版这里改错了，现改回原样）：
+         本模型 **ParamAngleY 负值 = 抬头，正值 = 低头** —— 依据是本代码库
+         自己的招式表，语义词明确、不会歧义：
+             lookUp 「抬头望天」 → ParamAngleY: -16
+             lookUpAt「抬头看你」→ ParamAngleY: -18
+             coverFace「低头捂脸」→ ParamAngleY: +14
+         所以 uy<0（手指在头的上方）应当得到**负**的 tAY（抬头）。
+         原式 `uy * 27` 本来就是对的；上一版误判成「负值=低头」并加了负号，
+         结果把上下彻底弄反（手指往上反而低头），故此处回退。
+         ⚠ 以后要确认这个符号，别靠肉眼猜渲染图，直接查招式表里
+           「抬头/低头」字样的 ParamAngleY 取值。 */
 
       /* ★ 缓动必须自己攒状态，不能写成 base + (目标-base)*k：
          baseOf() 永远返回 0（不随我们写进去的值变化），
