@@ -211,19 +211,19 @@
   var ACT_LIB = {
     plain: { label: '面无表情', dur: 2.0, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
     smile: { label: '微笑', dur: 2.6, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
-    smileL: { label: '左眼笑', dur: 2.4, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
-    smileR: { label: '右眼笑', dur: 2.4, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
-    grin: { label: '笑眯了眼', dur: 2.6, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamEyeLOpen: 0.45, ParamEyeROpen: 0.45, ParamMouthForm: 1 } },
-    winkL: { label: '左眼眨一下', dur: 1.5, params: { ParamEyeLOpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
-    winkR: { label: '右眼眨一下', dur: 1.5, params: { ParamEyeROpen: 0, ParamEyeRSmile: 0, ParamEyeLSmile: 1, ParamMouthForm: 1 } },
-    squintL: { label: '左眼半眯', dur: 2.2, params: { ParamEyeLOpen: 0.35, ParamEyeLSmile: 1, ParamEyeROpen: 1, ParamEyeRSmile: 0 } },
-    squintR: { label: '右眼半眯', dur: 2.2, params: { ParamEyeROpen: 0.35, ParamEyeRSmile: 1, ParamEyeLOpen: 1, ParamEyeLSmile: 0 } },
+    smileL: { label: '左眼笑', dur: 2.4, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
+    smileR: { label: '右眼笑', dur: 2.4, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
+    grin: { label: '笑眯了眼', dur: 2.6, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0, ParamEyeLOpen: 0.45, ParamEyeROpen: 0.45, ParamMouthForm: 1 } },
+    winkL: { label: '左眼眨一下', dur: 1.5, params: { ParamEyeLOpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
+    winkR: { label: '右眼眨一下', dur: 1.5, params: { ParamEyeROpen: 0, ParamEyeRSmile: 1, ParamEyeLSmile: 1, ParamMouthForm: 1 } },
+    squintL: { label: '左眼半眯', dur: 2.2, params: { ParamEyeLOpen: 0.35, ParamEyeLSmile: 1, ParamEyeROpen: 1, ParamEyeRSmile: 1 } },
+    squintR: { label: '右眼半眯', dur: 2.2, params: { ParamEyeROpen: 0.35, ParamEyeRSmile: 1, ParamEyeLOpen: 1, ParamEyeLSmile: 1 } },
     wide: { label: '睁大眼睛', dur: 1.8, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamBrowLY: 0.7, ParamBrowRY: 0.7 } },
     nod: { label: '点头', dur: 2.4, sway: [{ id: 'ParamAngleY', amp: 13, freq: 1.5 }] },
     shake: { label: '摇头', dur: 2.8, sway: [{ id: 'ParamAngleX', amp: 19, freq: 1.15 }] },
     wobble: { label: '晃脑', dur: 3.4, sway: [{ id: 'ParamAngleZ', amp: 14, freq: 0.85 }, { id: 'ParamBodyAngleZ', amp: 7, freq: 0.85 }] },
     swayBody: { label: '扭扭身子', dur: 3.6, sway: [{ id: 'ParamBodyAngleX', amp: 7, freq: 0.7 }, { id: 'ParamAngleX', amp: 11, freq: 0.7 }] },
-    tilt: { label: '歪头看你', dur: 3.0, params: { ParamAngleZ: 17, ParamAngleX: -8, ParamEyeLOpen: 0.8, ParamEyeLSmile: 1, ParamEyeRSmile: 0 } },
+    tilt: { label: '歪头看你', dur: 3.0, params: { ParamAngleZ: 17, ParamAngleX: -8, ParamEyeLOpen: 0.8, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
     lookUp: { label: '抬头望天', dur: 3.0, params: { ParamAngleY: 16, ParamAngleZ: -9, ParamEyeLOpen: 0.55, ParamEyeROpen: 0.55, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
     shy: { label: '有点不好意思', dur: 2.6, params: { ParamAngleX: -12, ParamAngleZ: 10, ParamEyeLOpen: 0.4, ParamEyeROpen: 0.4, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
   }
@@ -240,31 +240,31 @@
   /* ---------------- 点击反应库 ---------------- */
   var REACT_LIB = {
     shyHide: { label: '闭上眼快速摇头', dur: 1.1, in: 0.12, out: 0.32, hop: false,
-      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 0.5, ParamEyeRSmile: 0.5 },
+      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1 },
       sway: [{ id: 'ParamAngleX', amp: 20, freq: 3.4 }, { id: 'ParamBodyAngleX', amp: 6, freq: 3.4 }] },
     tiltStare: { label: '歪头睁大眼睛', dur: 1.9, in: 0.22, out: 0.4, hop: false,
-      params: { ParamAngleZ: 20, ParamAngleX: -6, ParamAngleY: 4, ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
+      params: { ParamAngleZ: 20, ParamAngleX: -6, ParamAngleY: 4, ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 },
       sway: [{ id: 'ParamAngleZ', amp: 3, freq: 0.6 }] },
     nodYes: { label: '点头', dur: 1.1, in: 0.14, out: 0.28, hop: false,
       sway: [{ id: 'ParamAngleY', amp: 16, freq: 2.8 }] },
     shakeNo: { label: '摇头', dur: 1.3, in: 0.14, out: 0.3, hop: false,
-      params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
+      params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1 },
       sway: [{ id: 'ParamAngleX', amp: 20, freq: 2.4 }] },
     winkBack: { label: '眨回去', dur: 1.0, in: 0.12, out: 0.3, hop: true,
-      params: { ParamEyeLOpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 1 } },
+      params: { ParamEyeLOpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
     coverFace: { label: '低头捂脸', dur: 1.8, in: 0.25, out: 0.4, hop: false,
       params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamAngleY: -14, ParamAngleX: -8 } },
     peek: { label: '偷看你', dur: 1.7, in: 0.2, out: 0.4, hop: false,
-      params: { ParamEyeLOpen: 0.45, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 0 },
+      params: { ParamEyeLOpen: 0.45, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 },
       sway: [{ id: 'ParamAngleZ', amp: 4, freq: 0.5 }] },
     startle: { label: '吓一跳', dur: 0.9, in: 0.1, out: 0.3, hop: true, hopAmp: 34,
-      params: { ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
+      params: { ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 },
       sway: [{ id: 'ParamAngleY', amp: 9, freq: 3 }] },
     wiggle: { label: '扭一扭', dur: 1.6, in: 0.2, out: 0.35, hop: false,
       sway: [{ id: 'ParamBodyAngleZ', amp: 9, freq: 2 }, { id: 'ParamAngleZ', amp: 7, freq: 2 }] },
     /* ★ 用户明确要求：闭眼微笑就写 0（全闭），不要 0.3~0.4 那种「一条缝」 */
     happyMelt: { label: '闭眼微笑', dur: 1.9, in: 0.25, out: 0.45, hop: false,
-      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 1 },
+      params: { ParamEyeLOpen: 0, ParamEyeROpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
       sway: [{ id: 'ParamAngleZ', amp: 9, freq: 0.9 }] },
     lookUpAt: { label: '抬头看你', dur: 1.6, in: 0.2, out: 0.4, hop: false,
       params: { ParamAngleY: 18, ParamAngleZ: -8, ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
@@ -279,12 +279,16 @@
        （0.30 太细成一条缝，0.40 眼白偏大）。 */
     fierce: { label: '凶狠', dur: 2.2, in: 0.18, out: 0.4, hop: false,
       params: { ParamEyeLOpen: 0.35, ParamEyeROpen: 0.35, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
+    /* ★ 2026-09-30 新增「瞪眼」：双眼完全睁开、不笑（Smile=1），直视前方。
+       本模型没有眉毛/眼型参数，最「瞪」的状态就是 Open=1 + Smile=1。 */
+    glare: { label: '瞪眼', dur: 2.4, in: 0.16, out: 0.4, hop: false,
+      params: { ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 1, ParamEyeRSmile: 1 } },
   }
   var REACT_COMBOS = {
     pokeBack: { label: '回敬一个 wink', steps: ['shakeNo', 'winkBack'] },
     shyPair: { label: '先捂脸再偷看', steps: ['coverFace', 'peek'] },
   }
-  var REACT_DEFAULT = ['shyHide', 'tiltStare', 'nodYes', 'shakeNo', 'winkBack', 'coverFace',
+  var REACT_DEFAULT = ['shyHide', 'tiltStare', 'glare', 'nodYes', 'shakeNo', 'winkBack', 'coverFace',
     'peek', 'startle', 'wiggle', 'happyMelt', 'lookUpAt', 'smirkL', 'pokeBack', 'shyPair']
 
   var ALL_ACTS = {}, ALL_COMBOS = {}, k
@@ -479,7 +483,12 @@
 
   function onFrame(dt) {
     if (!model) return
-    var t = now(), vals = {}
+    /* ★ 2026-09-30：actW 记录「本帧真有招式在演、且显式写过」的参数。
+       必须把它和「只是被 idleBase 补上的默认值」区分开 —— 否则 idleBase 里
+       一旦写了 Smile，vals.Smile 就永远 !== undefined，末尾的常驻锁定会被
+       误判成「已经写过了」而跳过，于是所有表情都被钉死在待机基准上
+       （实测全表 LS=RS=1，「闭眼微笑 Smile=0」「单眼笑 R=0」根本写不进去）。 */
+    var t = now(), vals = {}, actW = {}
 
     var open = 1, b = RT.blink
     if (RT.autoBlink) {
@@ -508,11 +517,13 @@
         for (j = 0; j < act.params.length; j++) {
           var pr = act.params[j]
           vals[pr.id] = baseOf(pr.id) + (pr.v - baseOf(pr.id)) * env
+          actW[pr.id] = 1
         }
         for (j = 0; j < act.sway.length; j++) {
           var sw = act.sway[j]
           var cur = vals[sw.id] !== undefined ? vals[sw.id] : baseOf(sw.id)
           vals[sw.id] = cur + sw.amp * Math.sin(2 * Math.PI * sw.freq * (t - p.t0)) * env
+          actW[sw.id] = 1
         }
       }
     }
@@ -618,8 +629,10 @@
           if (curO === null || lockO < curO) setP(lp.id, lockO)
           continue
         }
-        /* 已经写过的静态参数就让它赢（招式正在演的时候不抢戏） */
-        if (vals[lp.id] === undefined) setP(lp.id, lp.v)
+        /* ★ 2026-09-30 订正：**只有真有招式在演**时才让它赢（那才叫「不抢戏」）。
+           若这个值只是 idleBase 补的默认（说明当下没有招式在演），
+           常驻锁定必须能盖上去 —— 否则任何显式写了 Smile 的表情都会失效。 */
+        if (!actW[lp.id]) setP(lp.id, lp.v)
       }
     }
   }
@@ -1031,7 +1044,7 @@
        但眨眼必须留着（锁「闭眼笑」时就该一直闭着眼，那是用户要的）。
      -------------------------------------------------------------------- */
   var REACT_ORDER = [
-    ['happyMelt', '闭眼微笑'], ['tiltStare', '歪头睁大眼'], ['startle', '吓一跳'],
+    ['happyMelt', '闭眼微笑'], ['tiltStare', '歪头睁大眼'], ['glare', '瞪眼'], ['startle', '吓一跳'],
     ['peek', '偷看你'], ['winkBack', '眨回去'], ['smirkL', '单眼笑'], ['fierce', '凶狠'],
     ['lookUpAt', '抬头看你'], ['nodYes', '点头'], ['shakeNo', '摇头'],
     ['wiggle', '扭一扭'], ['shyHide', '闭眼快摇'], ['coverFace', '低头捂脸'],
@@ -1261,12 +1274,13 @@
         core = m.internalModel.coreModel
         app.stage.addChild(m)
         probe()
-        /* ★ 2026-09-29 修正：原来把双眼 Smile 硬钉成 1，onFrame 每帧
-           都会用 baseOf() 把它抬到 1，于是任何写了 0 的招式
-           （面无表情 / 睁大眼睛 / 右眼笑…）都被顶回去，表现就是
-           「微笑和不微笑反了」。改为不预设，让各招式自己决定；
-           需要「平时就微笑」时由招式/锁定态显式给出。 */
-        idleBase = {}
+        /* ★★ 2026-09-30 定稿（真值经受控渲染确认）：
+           本模型 **Smile=1 → 正常圆眼、Smile=0 → 弯眼微笑**，
+           而模型给的 default 恰好是 0（= 待机会「弯眼微笑」，与设计相反）。
+           所以待机基准**显式写 Smile=1**（正常不笑）；要笑的表情自己写 0。
+           ⚠ 绝不要再写回「空对象」—— 那会让所有没写 Smile 的招式
+             落回模型默认 0，整屏表情都变「弯眼」，正是本轮返工的原因。 */
+        idleBase = { ParamEyeLSmile: 1, ParamEyeRSmile: 1 }
         for (var id in idleBase) if (!PI[id]) delete idleBase[id]
         RT.autoBlink = !(m.internalModel.eyeBlink)
         RT.play = null; RT.hop = -1
