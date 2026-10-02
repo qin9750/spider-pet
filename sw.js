@@ -11,7 +11,7 @@
    打开就必然是当前版本。
 
    这份清单由 gen-sw.py 按目录内容自动生成，改了资源就同步改 VERSION。 */
-var VERSION = 'pet-2026-10-02a'
+var VERSION = 'pet-2026-10-03a'
 var CACHE = 'xiaozhizhu-' + VERSION
 var ASSETS = [
     './',

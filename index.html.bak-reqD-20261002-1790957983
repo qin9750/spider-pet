@@ -217,8 +217,8 @@
     smileL: { label: '左眼笑', dur: 2.4, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
     smileR: { label: '右眼笑', dur: 2.4, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 1, ParamMouthForm: 1 } },
     grin: { label: '笑眯了眼', dur: 2.6, params: { ParamEyeLSmile: 1, ParamEyeRSmile: 1, ParamEyeLOpen: 0.45, ParamEyeROpen: 0.45, ParamMouthForm: 1 } },
-    winkL: { label: '左眼眨一下', dur: 1.5, params: { ParamEyeLOpen: 0, ParamEyeLSmile: 1, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
-    winkR: { label: '右眼眨一下', dur: 1.5, params: { ParamEyeROpen: 0, ParamEyeRSmile: 1, ParamEyeLSmile: 0, ParamMouthForm: 1 } },
+    winkL: { label: '左眼眨一下', dur: 1.5, params: { ParamEyeLOpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 0, ParamMouthForm: 1 } },
+    winkR: { label: '右眼眨一下', dur: 1.5, params: { ParamEyeROpen: 0, ParamEyeRSmile: 0, ParamEyeLSmile: 0, ParamMouthForm: 1 } },
     squintL: { label: '左眼半眯', dur: 2.2, params: { ParamEyeLOpen: 0.35, ParamEyeLSmile: 0, ParamEyeROpen: 1, ParamEyeRSmile: 0 } },
     squintR: { label: '右眼半眯', dur: 2.2, params: { ParamEyeROpen: 0.35, ParamEyeRSmile: 0, ParamEyeLOpen: 1, ParamEyeLSmile: 0 } },
     wide: { label: '睁大眼睛', dur: 1.8, params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0, ParamBrowLY: 0.7, ParamBrowRY: 0.7 } },
@@ -250,12 +250,10 @@
       sway: [{ id: 'ParamAngleZ', amp: 3, freq: 0.6 }] },
     nodYes: { label: '点头', dur: 1.1, in: 0.14, out: 0.28, hop: false,
       sway: [{ id: 'ParamAngleY', amp: 16, freq: 2.8 }] },
-    shakeNo: { label: '摇头', dur: 1.3, in: 0.1, out: 0.2, hop: false,
-      /* ★ 2026-10-02 用户指定「快速多次摇」；实测 freq5 × 1.2s 在页面里被看成一次轻晃
-         （太快，眼睛当成单次抖动）。改为 freq3 ≈ 4 个分明来回 + amp24，肉眼能数出多次摇头。
-         想更急可把 freq 调回 4~5。 */
+    shakeNo: { label: '摇头', dur: 1.2, in: 0.14, out: 0.3, hop: false,
+      /* ★ 2026-10-02 用户指定：摇头要「快速多次摇」—— freq 5 × 1.2s ≈ 6 个来回 */
       params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
-      sway: [{ id: 'ParamAngleX', amp: 24, freq: 3 }] },
+      sway: [{ id: 'ParamAngleX', amp: 22, freq: 5 }] },
     winkBack: { label: '眨回去', dur: 1.0, in: 0.12, out: 0.3, hop: true,
       params: { ParamEyeLOpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 0 } },
     coverFace: { label: '低头捂脸', dur: 1.8, in: 0.25, out: 0.4, hop: false,
@@ -372,38 +370,6 @@
     { say: ['嘘——我在听有没有异常。……好吧，什么也没有。'], acts: ['squintL', 'squintR'] },
     { say: ['如果一会儿有紧急情况，我立刻出发——我是说，我马上就能出发。'], acts: ['wide', 'nod'] },
     { say: ['你有没有那种感觉：明明什么都没干，就已经下午了。'], acts: ['plain', 'swayBody'] },
-  ]
-
-  /* ---------------- 戳一戳对话池（D-4：系统按说出的话自动配最贴切的表情，表情库比面板更宽） ----------------
-     ★ 每条 say 都和「最贴合它的表情动作」成对写死 —— 所以「按文本选表情」= 取出这条已配对好的动作。
-       覆盖：面板 4 基础 + 6 个 cmo4 覆盖层 + 大量非面板动作（nod/shake/wobble/tilt/lookUp/shy/
-       startle/winkBack/happyMelt/coverFace/peek/smirkL/tiltStare/squint…），明显多于可选那 10 个。 */
-  var POKE_LINES = [
-    { say: '不不不，这个真不行。', acts: ['shakeNo'] },
-    { say: '好，交给我吧！', acts: ['nodYes'] },
-    { say: '哇——！吓我一跳！', acts: ['startle'] },
-    { say: '嗯——这样还挺舒服的。', acts: ['happyMelt'] },
-    { say: '别、别戳啦！我在专心呢。', acts: ['shyHide'] },
-    { say: '嘿！我也会。', acts: ['winkBack'] },
-    { say: '完了完了，我搞砸了。', acts: ['coverFace'] },
-    { say: '你在上面吗？我看得见你。', acts: ['lookUpAt'] },
-    { say: '这招是我自己琢磨的，帅吧？', acts: ['smirkL'] },
-    { say: '这回我可不干了。', acts: ['shakeNo'] },
-    { say: '回敬一个——这是礼貌。', acts: ['pokeBack'] },
-    { say: '你盯着我干嘛？我脸上有东西？', acts: ['tiltStare'] },
-    { say: '哼，真是的！', acts: ['angry'] },
-    { say: '诶？！你刚说什么？', acts: ['doubt'] },
-    { say: '哇啊啊啊——！', acts: ['shock'] },
-    { say: '呜…我是不是又搞砸了。', acts: ['cry'] },
-    { say: '你、你别过来！', acts: ['black'] },
-    { say: '我脸红了吗？才没有。', acts: ['blush'] },
-    { say: '我在想，要不要给战衣加个新功能。', acts: ['wobble', 'lookUp'] },
-    { say: '网液配方我调了十七次了，这次一定行。', acts: ['nod', 'smileR'] },
-    { say: '嘘——我在听有没有异常。', acts: ['squintL', 'squintR'] },
-    { say: '今天也要加油——这句话我每天都说一遍。', acts: ['nod', 'smile'] },
-    { say: '你有没有那种感觉：明明什么都没干，就已经下午了。', acts: ['plain', 'swayBody'] },
-    { say: '梅姨说要多喝水，你也别忘了。', acts: ['nod', 'tilt'] },
-    { say: '再刷一会儿就睡——这句话你说过几遍啦？', acts: ['squintL', 'squintR'] },
   ]
 
   function pick(a) { return a && a.length ? a[Math.floor(Math.random() * a.length)] : null }
@@ -1223,10 +1189,10 @@
     if (!model) return
     var list = stepsOf(name)
     if (!list) return
-    /* ★ 2026-10-02 D-1：点击表情不再先「摇一次头」—— 之前 hop=true 会触发 model.rotation 摆动，
-       用户明确要删掉这个前置摇头。改为 hop=false，表情就地演出。 */
-    RT.hopAmp = 22
-    startPlay(list, null, false)                   // 演一次不说台词，专注看表情（不摇脑袋）
+    var hop = true, tpl = ALL_ACTS[name]
+    if (tpl && tpl.hop === false) hop = false
+    RT.hopAmp = (tpl && isFinite(Number(tpl.hopAmp))) ? Number(tpl.hopAmp) : 22
+    startPlay(list, null, hop)                     // 演一次不说台词，专注看表情
     playSfx(ACT_SFX[name] || 'tap')
   }
   function renderEmojiPanel() {
@@ -1440,15 +1406,15 @@
   var ENV = envCheck()
 
   /* ---------------- 对外接口（也给自动化验证用） ---------------- */
-  /* ★ 2026-10-02 D-4：戳一戳 → 自动冒出一句台词（对话框）+ 系统按这句台词自动配最贴切的表情。
-     不弹让用户选的菜单；表情库 POKE_LINES 比面板的 10 个宽得多。 */
   window.petPoke = function () {
     if (!model) return false
-    var ln = POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]
-    var list = seqOf(ln.acts) || stepsOf('smile')
-    startPlay(list, ln.say, false)        // hop=false：戳的时候也不先摇头
-    playSfx('tap')
-    return true
+    var name = REACT_DEFAULT[Math.floor(Math.random() * REACT_DEFAULT.length)]
+    var list = stepsOf(name)
+    if (!list) return false
+    var hop = true, tpl = ALL_ACTS[name]
+    if (tpl && tpl.hop === false) hop = false
+    RT.hopAmp = (tpl && isFinite(Number(tpl.hopAmp))) ? Number(tpl.hopAmp) : 22
+    return startPlay(list, pick(ACT_SAY[name]), hop)
   }
   window.petSay = function (s) { showBubble(s) }
   /* ---- 音乐（需求5）---- */
