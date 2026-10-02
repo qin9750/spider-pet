@@ -11,7 +11,7 @@
    打开就必然是当前版本。
 
    这份清单由 gen-sw.py 按目录内容自动生成，改了资源就同步改 VERSION。 */
-var VERSION = 'pet-2026-09-28f'
+var VERSION = 'pet-2026-10-02a'
 var CACHE = 'xiaozhizhu-' + VERSION
 var ASSETS = [
     './',
@@ -23,11 +23,10 @@ var ASSETS = [
     'lib/live2dcubismcore.min.js',
     'lib/pixi-live2d-display.min.js',
     'lib/pixi.min.js',
-    'models/xiaozhizhu/pet.json',
-    'models/xiaozhizhu/xiaozhizhu.1024/texture_00.png',
-    'models/xiaozhizhu/xiaozhizhu.cdi3.json',
-    'models/xiaozhizhu/xiaozhizhu.moc3',
-    'models/xiaozhizhu/xiaozhizhu.model3.json',
+    'models/cmo4/小蜘蛛cmo4.model3.json',
+    'models/cmo4/小蜘蛛cmo4.1024/texture_00.png',
+    'models/cmo4/小蜘蛛cmo4.cdi3.json',
+    'models/cmo4/小蜘蛛cmo4.moc3',
     'index.html'
 ]
 

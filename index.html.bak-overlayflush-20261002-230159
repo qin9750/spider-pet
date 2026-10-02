@@ -288,21 +288,19 @@
       params: { ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 0, ParamEyeRSmile: 0 } },
     /* ★ cmo4 专属表情层：覆盖贴图参数，纯 0/1 切换（黑脸/流泪/脸红/生气/疑问/震惊）。
        用户要求：全部「快速变化」，参数基本只取 0 和 1，触发瞬间 snap 过去。
-       故 in 给得很小（0.08s）、out 也快（0.15s 快收）；不挂 sway、不混眼型，让贴图层自己说话。
-       轻点演 1~1.4s 自动消失；长按锁定时由 onFrame 末尾常驻写 1。
-       ★ 归零由 flushActs 兜底（演出到点 / 被连点打断 / 切换锁定，三条路都把覆盖层参数写回 0），
-         严禁任何路径把 black/ll/rl/fr/Param/Param2/Param3 长时间留在中间值。 */
-    black: { label: '黑脸', dur: 1.0, in: 0.08, out: 0.15, hop: false,
+       故 in 给得很小（0.08s）、out 也快（0.25~0.3s）；不挂 sway、不混眼型，让贴图层自己说话。
+       长按锁定时由 onFrame 末尾常驻写 1。 */
+    black: { label: '黑脸', dur: 1.0, in: 0.08, out: 0.25, hop: false,
       params: { black: 1 } },
-    cry: { label: '流泪', dur: 1.4, in: 0.08, out: 0.15, hop: false,
+    cry: { label: '流泪', dur: 1.4, in: 0.08, out: 0.3, hop: false,
       params: { ll: 1, rl: 1 } },
-    blush: { label: '脸红', dur: 1.2, in: 0.08, out: 0.15, hop: false,
+    blush: { label: '脸红', dur: 1.2, in: 0.08, out: 0.3, hop: false,
       params: { fr: 1 } },
-    angry: { label: '生气', dur: 1.3, in: 0.08, out: 0.15, hop: false,
+    angry: { label: '生气', dur: 1.3, in: 0.08, out: 0.3, hop: false,
       params: { Param: 1 } },
-    doubt: { label: '疑问', dur: 1.3, in: 0.08, out: 0.15, hop: false,
+    doubt: { label: '疑问', dur: 1.3, in: 0.08, out: 0.3, hop: false,
       params: { Param2: 1 } },
-    shock: { label: '震惊', dur: 1.3, in: 0.08, out: 0.15, hop: false,
+    shock: { label: '震惊', dur: 1.3, in: 0.08, out: 0.3, hop: false,
       params: { Param3: 1 } },
   }
   var REACT_COMBOS = {
@@ -479,21 +477,8 @@
   function totalDur(list) { var t = 0; for (var i = 0; i < list.length; i++) t += list[i].dur; return t }
 
   /* ---------------- 播放 ---------------- */
-  /* ★ 2026-10-02：把一段演出（从第 from 步起）显式写过的参数全部归位到默认值。
-     black/ll/rl/fr/Param/Param2/Param3 这类覆盖层参数不在 idleBase 里，
-     演出结束后没人再写它们，就会永远停在最后一帧的小中间值上
-     —— 用户明令禁止：这六个表情参数只许 0/1，中间值不许长留。 */
-  function flushActs(list, from) {
-    for (var i = from; i < list.length; i++) {
-      var ps = list[i].params
-      for (var j = 0; j < ps.length; j++) setP(ps[j].id, baseOf(ps[j].id))
-    }
-  }
   function startPlay(list, say, hop) {
     if (!list || !list.length) return false
-    /* ★ 连点打断：旧演出（含没演到的后续步）的参数先归位，
-       否则「黑脸演到一半点流泪」，black 会卡在 1 一直挂着。 */
-    if (RT.play) flushActs(RT.play.list, RT.play.i)
     RT.play = { list: list, i: 0, t0: now() }
     if (say) showBubble(say)
     if (hop) { RT.hop = 0; RT.hopAmp = 22 }
@@ -544,9 +529,6 @@
       while (p) {
         var a = p.list[p.i], el = t - p.t0
         if (el < a.dur) break
-        /* ★ 2026-10-02：到点收尾先归位 —— 最后一帧常停在 env≈0.03 的小中间值上，
-           弹出后再没人写这个参数，覆盖层会永久残留（淡影/半滴泪挂着不消失）。 */
-        for (var fi = 0; fi < a.params.length; fi++) setP(a.params[fi].id, baseOf(a.params[fi].id))
         p.t0 += a.dur; p.i++
         if (p.i >= p.list.length) { p = RT.play = null; break }
       }
@@ -1180,8 +1162,7 @@
       for (var i = 0; i < REACT_ORDER.length; i++) if (REACT_ORDER[i][0] === name) lb = REACT_ORDER[i][1]
       showBubble('「' + lb + '」定住啦，再长按一下就取消。')
       playSfx('ui')
-      if (RT.play) flushActs(RT.play.list, RT.play.i)  // ★ 先归位再停：不打架、也不残留
-      RT.play = null
+      RT.play = null                               // 停掉正在演的，免得打架
     }
     renderEmojiPanel()
   }
