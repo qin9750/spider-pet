@@ -250,10 +250,9 @@
       sway: [{ id: 'ParamAngleZ', amp: 3, freq: 0.6 }] },
     nodYes: { label: '点头', dur: 1.1, in: 0.14, out: 0.28, hop: false,
       sway: [{ id: 'ParamAngleY', amp: 16, freq: 2.8 }] },
-    shakeNo: { label: '摇头', dur: 1.2, in: 0.14, out: 0.3, hop: false,
-      /* ★ 2026-10-02 用户指定：摇头要「快速多次摇」—— freq 5 × 1.2s ≈ 6 个来回 */
+    shakeNo: { label: '摇头', dur: 1.3, in: 0.14, out: 0.3, hop: false,
       params: { ParamEyeLSmile: 0, ParamEyeRSmile: 0 },
-      sway: [{ id: 'ParamAngleX', amp: 22, freq: 5 }] },
+      sway: [{ id: 'ParamAngleX', amp: 20, freq: 2.4 }] },
     winkBack: { label: '眨回去', dur: 1.0, in: 0.12, out: 0.3, hop: true,
       params: { ParamEyeLOpen: 0, ParamEyeLSmile: 0, ParamEyeRSmile: 0 } },
     coverFace: { label: '低头捂脸', dur: 1.8, in: 0.25, out: 0.4, hop: false,
@@ -277,16 +276,16 @@
     /* ★ 2026-09-29 新增：凶狠（双眼半眯）
        口径直接对齐桌面版 renderer.js 的 squint：
          squintL/R: ParamEyeLOpen 0.35 + Smile 0（不笑，另眼 Open 1）
-         idleEyes : Smile 0（待机不笑，2026-10-02 用户指定）
+         idleEyes : Smile 1（桌面版待机本来就是 Smile=1）
        所以「凶狠」= Open 0.35 + Smile 0（不笑），两眼一致。
        实测与用户给的参考图⑤按脸宽归一后逐像素比对，0.35 比 0.30/0.40 都更贴合
        （0.30 太细成一条缝，0.40 眼白偏大）。 */
     fierce: { label: '凶狠', dur: 2.2, in: 0.18, out: 0.4, hop: false,
       params: { ParamEyeLOpen: 0.35, ParamEyeROpen: 0.35, ParamEyeLSmile: 0, ParamEyeRSmile: 0 } },
-    /* ★ 「瞪眼」：2026-10-02 用户指定 = 左右眼开合 0.5、两眼 Smile 0（不笑）。
-       （2026-09-30 版本是 Open=1 全睁，2026-10-02 起改为 0.5 半睁。） */
+    /* ★ 2026-09-30 新增「瞪眼」：双眼完全睁开、不笑（Smile=0），直视前方。
+       本模型没有眉毛/眼型参数，最「瞪」的状态就是 Open=1 + Smile=0。 */
     glare: { label: '瞪眼', dur: 2.4, in: 0.16, out: 0.4, hop: false,
-      params: { ParamEyeLOpen: 0.5, ParamEyeROpen: 0.5, ParamEyeLSmile: 0, ParamEyeRSmile: 0 } },
+      params: { ParamEyeLOpen: 1, ParamEyeROpen: 1, ParamEyeLSmile: 0, ParamEyeRSmile: 0 } },
     /* ★ cmo4 专属表情层：覆盖贴图参数，纯 0/1 切换（黑脸/流泪/脸红/生气/疑问/震惊）。
        用户要求：全部「快速变化」，参数基本只取 0 和 1，触发瞬间 snap 过去。
        故 in 给得很小（0.08s）、out 也快（0.15s 快收）；不挂 sway、不混眼型，让贴图层自己说话。
@@ -310,7 +309,8 @@
     pokeBack: { label: '回敬一个 wink', steps: ['shakeNo', 'winkBack'] },
     shyPair: { label: '先捂脸再偷看', steps: ['coverFace', 'peek'] },
   }
-  var REACT_DEFAULT = ['smile', 'winkR', 'glare', 'shakeNo',
+  var REACT_DEFAULT = ['shyHide', 'tiltStare', 'glare', 'nodYes', 'shakeNo', 'winkBack', 'coverFace',
+    'peek', 'startle', 'wiggle', 'happyMelt', 'lookUpAt', 'smirkL', 'pokeBack', 'shyPair',
     'black', 'cry', 'blush', 'angry', 'doubt', 'shock']
 
   var ALL_ACTS = {}, ALL_COMBOS = {}, k
@@ -392,7 +392,7 @@
   })
   var model = null, core = null
   var PI = {}
-  var idleBase = { ParamEyeLSmile: 0, ParamEyeRSmile: 0 }
+  var idleBase = { ParamEyeLSmile: 1, ParamEyeRSmile: 1 }
   var setById = false
 
   var RT = {
@@ -1082,11 +1082,11 @@
        但眨眼必须留着（锁「闭眼笑」时就该一直闭着眼，那是用户要的）。
      -------------------------------------------------------------------- */
   var REACT_ORDER = [
-    /* ★ 2026-10-02 按用户要求重排：原「闭眼微笑/歪头睁大眼/吓一跳/偷看你/眨回去/单眼笑/
-       凶狠/抬头看你/点头/扭一扭/闭眼快摇/低头捂脸/回敬wink/捂脸再偷看」整组下架，
-       换成 微笑 / wink / 摇头(快速多次) / 瞪眼(Open0.5+Smile0)。
-       被下架招式的定义仍在 REACT_LIB（组合招/台词引用），只是不再上面板、不进随机池。 */
-    ['smile', '微笑'], ['winkR', 'wink'], ['shakeNo', '摇头'], ['glare', '瞪眼'],
+    ['happyMelt', '闭眼微笑'], ['tiltStare', '歪头睁大眼'], ['glare', '瞪眼'], ['startle', '吓一跳'],
+    ['peek', '偷看你'], ['winkBack', '眨回去'], ['smirkL', '单眼笑'], ['fierce', '凶狠'],
+    ['lookUpAt', '抬头看你'], ['nodYes', '点头'], ['shakeNo', '摇头'],
+    ['wiggle', '扭一扭'], ['shyHide', '闭眼快摇'], ['coverFace', '低头捂脸'],
+    ['pokeBack', '回敬 wink'], ['shyPair', '捂脸再偷看'],
     ['black', '黑脸'], ['cry', '流泪'], ['blush', '脸红'],
     ['angry', '生气'], ['doubt', '疑问'], ['shock', '震惊'],
   ]
@@ -1325,11 +1325,11 @@
         probe()
         /* ★★ 2026-09-30 定稿（真值经受控渲染确认）：
            本模型 **Smile=1 → 弯眼微笑（即「笑」）、Smile=0 → 正常圆眼（即「不笑」）**，
-           而模型给的 default 恰好是 0（= 待机不笑，正好符合现设计）。
-           所以待机基准**显式写 Smile=0**（用户 2026-10-02 指定：待机不笑）；要笑的表情自己写 1。
+           而模型给的 default 恰好是 0（= 待机会「弯眼微笑」，与设计相反）。
+           所以待机基准**显式写 Smile=1**（微笑，满足「待机微笑眼」）；要「不笑/中性」的表情自己写 0。
            ⚠ 绝不要再写回「空对象」—— 那会让所有没写 Smile 的招式
              落回模型默认 0，整屏表情都变「弯眼」，正是本轮返工的原因。 */
-        idleBase = { ParamEyeLSmile: 0, ParamEyeRSmile: 0 }
+        idleBase = { ParamEyeLSmile: 1, ParamEyeRSmile: 1 }
         for (var id in idleBase) if (!PI[id]) delete idleBase[id]
         RT.autoBlink = !(m.internalModel.eyeBlink)
         RT.play = null; RT.hop = -1
