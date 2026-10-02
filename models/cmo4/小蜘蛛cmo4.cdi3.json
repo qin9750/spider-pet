@@ -1,0 +1,121 @@
+{
+	"Version": 3,
+	"Parameters": [
+		{
+			"Id": "ParamAngleX",
+			"GroupId": "",
+			"Name": "角度 X"
+		},
+		{
+			"Id": "ParamAngleY",
+			"GroupId": "",
+			"Name": "角度 Y"
+		},
+		{
+			"Id": "ParamAngleZ",
+			"GroupId": "",
+			"Name": "角度 Z"
+		},
+		{
+			"Id": "ParamEyeLOpen",
+			"GroupId": "",
+			"Name": "左眼　开闭"
+		},
+		{
+			"Id": "ParamEyeLSmile",
+			"GroupId": "",
+			"Name": "左眼　微笑"
+		},
+		{
+			"Id": "ParamEyeROpen",
+			"GroupId": "",
+			"Name": "右眼"
+		},
+		{
+			"Id": "ParamEyeRSmile",
+			"GroupId": "",
+			"Name": "右眼　微笑"
+		},
+		{
+			"Id": "ParamBreath",
+			"GroupId": "",
+			"Name": "呼吸"
+		},
+		{
+			"Id": "black",
+			"GroupId": "",
+			"Name": "黑脸"
+		},
+		{
+			"Id": "ll",
+			"GroupId": "",
+			"Name": "左眼 泪"
+		},
+		{
+			"Id": "rl",
+			"GroupId": "",
+			"Name": "右眼 泪"
+		},
+		{
+			"Id": "fr",
+			"GroupId": "",
+			"Name": "脸红"
+		},
+		{
+			"Id": "Param",
+			"GroupId": "",
+			"Name": "生气"
+		},
+		{
+			"Id": "Param2",
+			"GroupId": "",
+			"Name": "疑问"
+		},
+		{
+			"Id": "Param3",
+			"GroupId": "",
+			"Name": "惊讶"
+		}
+	],
+	"ParameterGroups": [],
+	"Parts": [
+		{
+			"Id": "Part8",
+			"Name": "1790938844064.psd"
+		},
+		{
+			"Id": "Part",
+			"Name": "眼睛"
+		},
+		{
+			"Id": "Part2",
+			"Name": "配饰"
+		},
+		{
+			"Id": "Part3",
+			"Name": "身体"
+		},
+		{
+			"Id": "Part4",
+			"Name": "眼睛"
+		},
+		{
+			"Id": "Part5",
+			"Name": "配饰"
+		},
+		{
+			"Id": "Part6",
+			"Name": "身体"
+		},
+		{
+			"Id": "Part7",
+			"Name": "图层组4"
+		}
+	],
+	"CombinedParameters": [
+		[
+			"ParamAngleX",
+			"ParamAngleY"
+		]
+	]
+}

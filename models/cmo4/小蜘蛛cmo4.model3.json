@@ -1,0 +1,22 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "小蜘蛛cmo4.moc3",
+		"Textures": [
+			"小蜘蛛cmo4.1024/texture_00.png"
+		],
+		"DisplayInfo": "小蜘蛛cmo4.cdi3.json"
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		}
+	]
+}
