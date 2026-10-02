@@ -130,31 +130,6 @@
   }
   #emojiPanel .item.on .pin { opacity:1; }
 
-  /* 自定义锁定表情面板（2026-10-03 新增） */
-  #customPanel {
-    position:absolute; left:calc(10px + env(safe-area-inset-left)); z-index:45;
-    top:calc(10px + env(safe-area-inset-top) + 44px + 8px);
-    width:min(252px, 84vw); max-height:min(72vh, 560px); overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-    background:rgba(255,253,247,.96);
-    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
-    border:1px solid rgba(58,50,38,.14); border-radius:16px;
-    padding:10px 12px; display:none; box-shadow:0 12px 34px rgba(90,74,48,.18);
-    color:#3A3226; font-size:13px;
-  }
-  #customPanel.on { display:block; }
-  #customPanel .hd { font-size:11px; color:rgba(58,50,38,.6); line-height:1.5; margin-bottom:8px; }
-  #customPanel .row { display:flex; align-items:center; gap:8px; padding:5px 2px; border-bottom:1px solid rgba(58,50,38,.07); }
-  #customPanel .row > label { flex:0 0 64px; }
-  #customPanel .row input[type=range] { flex:1 1 auto; min-width:0; }
-  #customPanel .row .val { flex:0 0 36px; text-align:right; font-variant-numeric:tabular-nums; opacity:.7; }
-  #customPanel .row.switch > label { flex:1 1 auto; }
-  #customPanel .row.switch input { width:20px; height:20px; flex:0 0 auto; }
-  #customPanel .acts { display:flex; gap:8px; margin-top:12px; }
-  #customPanel .acts button { flex:1; padding:10px; border:0; border-radius:10px; font-size:13px; font-family:inherit; color:#fff; }
-  #customPanel .acts .apply { background:#4A76DC; }
-  #customPanel .acts .clear { background:rgba(58,50,38,.18); color:#3A3226; }
-
   #hint {
     position:absolute; left:50%; transform:translateX(-50%);
     bottom:calc(16px + env(safe-area-inset-bottom));
@@ -182,7 +157,6 @@
   <button id="btnReset" title="回到原位">⟲</button>
   <button id="btnMusic" title="音乐开 / 关">♪</button>
   <button id="btnEmoji" title="表情栏">😊</button>
-  <button id="btnCustom" title="自定义锁定表情">🎚</button>
   <button id="btnHold" title="拖拽 / 吸引转头">✋</button>
 </div>
 
@@ -190,9 +164,6 @@
 <div id="emojiPanel">
   <div class="hd">轻点＝演一次<br>长按＝常驻锁定</div>
 </div>
-
-<!-- 自定义锁定表情面板（2026-10-03 新增）：自己调左右眼开合/微笑(0~1) 与 黑脸/疑惑/惊讶/脸红/左右眼泪(0/1) -->
-<div id="customPanel"></div>
 
 <div id="hint">轻戳一下 · 按住拖动 · 双指缩放 · 右上角可切「吸引转头」</div>
 
@@ -1155,25 +1126,6 @@
   ]
   var emojiLock = null         // 锁定的招式名（null = 不锁）
   var lockedAct = null         // 编译好的常驻参数
-
-  /* 自定义锁定表情（2026-10-03 新增）：自己调左右眼开合/微笑(0~1) + 黑脸/疑惑/惊讶/脸红/左右眼泪(0/1)。
-     与面板「长按锁定」互斥：二者同时只可能有一个在生效。 */
-  var CUSTOM_KEY = 'pet.customEmoji'
-  var customLocked = false
-  var customCtl = {}            // id -> <input> 元素
-  var customParamDefs = [
-    { id: 'ParamEyeLOpen',  label: '左眼睁开', type: 'range' },
-    { id: 'ParamEyeROpen',  label: '右眼睁开', type: 'range' },
-    { id: 'ParamEyeLSmile', label: '左眼微笑', type: 'range' },
-    { id: 'ParamEyeRSmile', label: '右眼微笑', type: 'range' },
-    { id: 'black', label: '黑脸',   type: 'bin' },
-    { id: 'Param2', label: '疑惑',   type: 'bin' },
-    { id: 'Param3', label: '惊讶',   type: 'bin' },
-    { id: 'fr',    label: '脸红',   type: 'bin' },
-    { id: 'll',    label: '左眼泪', type: 'bin' },
-    { id: 'rl',    label: '右眼泪', type: 'bin' },
-  ]
-  function customTypeOf(id) { for (var ci = 0; ci < customParamDefs.length; ci++) if (customParamDefs[ci].id === id) return customParamDefs[ci].type; return null }
   try { emojiLock = localStorage.getItem('pet.emoji') || null } catch (e) { }
   if (emojiLock && !ALL_ACTS[emojiLock] && !ALL_COMBOS[emojiLock]) emojiLock = null
 
@@ -1233,9 +1185,6 @@
   }
 
   function emojiPin(name) {
-    /* ★ 2026-10-03：与「自定义锁定表情」互斥——长按面板表情时，先清掉自定义锁定 */
-    customLocked = false
-    try { localStorage.removeItem(CUSTOM_KEY) } catch (e) { }
     if (emojiLock === name) {                      // 再长按 → 解锁
       /* ★ 2026-09-29：解锁时把刚才被常驻写死的参数**显式复位到默认**，
          否则它们会停在最后一帧的值上（例如 Smile 卡在 1 或者左右不等），
@@ -1279,124 +1228,6 @@
     RT.hopAmp = 22
     startPlay(list, null, false)                   // 演一次不说台词，专注看表情（不摇脑袋）
     playSfx(ACT_SFX[name] || 'tap')
-  }
-
-  /* =========================================================================
-     自定义锁定表情面板（2026-10-03 新增）
-       · 左右眼「开合 / 微笑」用滑块，参数可取 0~1（连续）
-       · 黑脸(black) / 疑惑(Param2) / 惊讶(Param3) / 脸红(fr) / 左眼泪(ll) / 右眼泪(rl)
-         是 0/1 开关（只许 0 或 1，不允许中间值）
-       · 点「应用并锁定」把当前控件值编译成 lockedAct 常驻；刷新后从 localStorage 恢复
-       · 与面板「长按锁定」互斥
-     ========================================================================= */
-  function buildCustomPanel() {
-    var root = document.getElementById('customPanel')
-    if (!root) return
-    root.innerHTML = ''
-    var hd = document.createElement('div')
-    hd.className = 'hd'
-    hd.innerHTML = '左右眼「开合 / 微笑」可拉 0~1；下面是 0/1 开关。点「应用并锁定」生效，刷新也记得。'
-    root.appendChild(hd)
-    for (var ci = 0; ci < customParamDefs.length; ci++) {
-      var d = customParamDefs[ci]
-      var row = document.createElement('div')
-      row.className = 'row' + (d.type === 'bin' ? ' switch' : '')
-      var lab = document.createElement('label')
-      lab.textContent = d.label
-      row.appendChild(lab)
-      var el
-      if (d.type === 'range') {
-        el = document.createElement('input')
-        el.type = 'range'; el.min = '0'; el.max = '1'; el.step = '0.01'
-        var def = (d.id.indexOf('Smile') >= 0) ? 0 : 1   // 睁眼默认全开，微笑默认0
-        el.value = String(def)
-        var vspan = document.createElement('span'); vspan.className = 'val'; vspan.textContent = Number(def).toFixed(2)
-        ;(function (e, vs) { e.addEventListener('input', function () { vs.textContent = Number(e.value).toFixed(2) }) })(el, vspan)
-        row.appendChild(el); row.appendChild(vspan)
-      } else {
-        el = document.createElement('input')
-        el.type = 'checkbox'; el.checked = false
-        row.appendChild(el)
-      }
-      customCtl[d.id] = el
-      root.appendChild(row)
-    }
-    var acts = document.createElement('div'); acts.className = 'acts'
-    var bApply = document.createElement('button'); bApply.className = 'apply'; bApply.textContent = '应用并锁定'
-    bApply.addEventListener('click', function () { applyCustomLock(); closeCustom() })
-    var bClear = document.createElement('button'); bClear.className = 'clear'; bClear.textContent = '清除'
-    bClear.addEventListener('click', function () { clearCustomLock(); closeCustom() })
-    acts.appendChild(bApply); acts.appendChild(bClear)
-    root.appendChild(acts)
-  }
-  function closeCustom() {
-    var p = document.getElementById('customPanel'); if (p) p.classList.remove('on')
-    var b = document.getElementById('btnCustom'); if (b) b.classList.remove('on')
-  }
-  function readCustomParams() {
-    var p = {}
-    for (var ci = 0; ci < customParamDefs.length; ci++) {
-      var d = customParamDefs[ci], el = customCtl[d.id]
-      if (!el) continue
-      p[d.id] = (d.type === 'range') ? Number(el.value) : (el.checked ? 1 : 0)
-    }
-    return p
-  }
-  /* 把控件值编译成 onFrame 末尾能直接常驻写的 lockedAct 数组（{id,v}） */
-  function buildLockedActFromParams(p) {
-    var out = []
-    for (var id in p) {
-      if (!PI[id]) continue
-      var t = customTypeOf(id)
-      var v = Number(p[id])
-      if (!isFinite(v)) continue
-      v = clampEye(id, v)
-      var lo = PI[id].min, hi = PI[id].max
-      if (v < lo) v = lo
-      if (v > hi) v = hi
-      if (t === 'bin' && v < 0.5) continue     // 0 = 关，不锁（保持待机默认 0）
-      out.push({ id: id, v: v })
-    }
-    return out
-  }
-  function applyCustomLock() {
-    if (!model) { showBubble('等模型加载好再锁～'); return }
-    /* 与面板长按锁定互斥：清掉旧的 emojiLock */
-    if (emojiLock) { emojiLock = null; try { localStorage.removeItem('pet.emoji') } catch (e) { } renderEmojiPanel() }
-    var p = readCustomParams()
-    lockedAct = buildLockedActFromParams(p)
-    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify({ params: p, locked: true })) } catch (e) { }
-    customLocked = true
-    showBubble('自定义表情锁定啦～再点「清除」取消。')
-    playSfx('ui')
-  }
-  function clearCustomLock() {
-    lockedAct = null; customLocked = false
-    try { localStorage.removeItem(CUSTOM_KEY) } catch (e) { }
-    showBubble('自定义表情已清除。'); playSfx('uiOff')
-  }
-  function restoreCustomLock() {
-    try {
-      var s = localStorage.getItem(CUSTOM_KEY)
-      if (!s) return
-      var o = JSON.parse(s)
-      if (!o || !o.locked || !o.params) return
-      /* 与面板长按锁定互斥：有自定义锁定就清掉 emojiLock */
-      if (emojiLock) { emojiLock = null; try { localStorage.removeItem('pet.emoji') } catch (e) { } renderEmojiPanel() }
-      for (var id in o.params) if (customCtl[id]) {
-        var v = o.params[id]
-        if (customTypeOf(id) === 'bin') customCtl[id].checked = !!v
-        else customCtl[id].value = String(v)
-      }
-      for (var ci = 0; ci < customParamDefs.length; ci++) {
-        var d = customParamDefs[ci], el = customCtl[d.id]
-        if (el && d.type === 'range') {
-          var nv = el.parentNode.querySelector('.val'); if (nv) nv.textContent = Number(el.value).toFixed(2)
-        }
-      }
-      lockedAct = buildLockedActFromParams(o.params)
-      customLocked = true
-    } catch (e) { }
   }
   function renderEmojiPanel() {
     for (var k in items) {
@@ -1466,33 +1297,15 @@
     playSfx('ui')
     if (on) { renderEmojiPanel(); hintEl.classList.add('off') }
   })
-  /* 点面板以外的地方收起面板（触屏上很自然的习惯）；表情栏 / 自定义栏分别处理 */
+  /* 点面板以外的地方收起面板（触屏上很自然的习惯） */
   document.addEventListener('pointerdown', function (e) {
+    if (!panelEl.classList.contains('on')) return
     var t = e.target
-    var inUI = t && t.closest && (t.closest('#emojiPanel') || t.closest('#btnEmoji') ||
-      t.closest('#customPanel') || t.closest('#btnCustom'))
-    if (inUI) return
-    if (panelEl.classList.contains('on')) { panelEl.classList.remove('on'); btnEmoji.classList.remove('on') }
-    var cp = document.getElementById('customPanel')
-    if (cp && cp.classList.contains('on')) {
-      cp.classList.remove('on')
-      var b = document.getElementById('btnCustom'); if (b) b.classList.remove('on')
-    }
+    if (t && t.closest && (t.closest('#emojiPanel') || t.closest('#btnEmoji'))) return
+    panelEl.classList.remove('on'); btnEmoji.classList.remove('on')
   }, { passive: true })
 
   buildEmojiPanel()
-  buildCustomPanel()       // ★ 2026-10-03 自定义锁定表情面板
-
-  /* 自定义锁定表情面板（2026-10-03 新增） */
-  var btnCustom = document.getElementById('btnCustom')
-  btnCustom.addEventListener('click', function () {
-    var cp = document.getElementById('customPanel')
-    var on = !cp.classList.contains('on')
-    cp.classList.toggle('on', on)
-    btnCustom.classList.toggle('on', on)
-    if (on) { panelEl.classList.remove('on'); btnEmoji.classList.remove('on'); hintEl.classList.add('off') }
-    playSfx('ui')
-  })
 
   /* ★ 有音乐待恢复时，用户的第一次触摸就把它续上（iOS 手势解锁） */
   function unlockAudio() {
@@ -1555,7 +1368,6 @@
         RT.autoBlink = !(m.internalModel.eyeBlink)
         RT.play = null; RT.hop = -1
         restoreLockedAct()      // ★ 重建上次锁定的表情（见函数注释）
-        restoreCustomLock()     // ★ 2026-10-03 重建「自定义锁定表情」
         if (oldVM) { view.zoom = oldVM; view.ox = oldVO.ox; view.oy = oldVO.oy }
         layout()
         if (!m.__hooked) {
@@ -1659,24 +1471,6 @@
   window.petEmojiPin = function (name) { if (name === undefined) return emojiLock; emojiPin(name); return emojiLock }
   window.petEmojiLocked = function () { return emojiLock }
   window.petEmojiTap = function (name) { emojiTap(name); return true }
-  /* ★ 2026-10-03 自定义锁定表情：对外接口（也给自动化验证用） */
-  window.petCustomSet = function (id, v) {           // 设单个控件值（不立即锁定）
-    if (!customCtl[id]) return false
-    if (customTypeOf(id) === 'bin') customCtl[id].checked = !!v
-    else customCtl[id].value = String(v)
-    return true
-  }
-  window.petCustomLock = function (params) {         // 设控件值并应用锁定；params 可省略（用当前控件值）
-    if (params) for (var id in params) if (customCtl[id]) {
-      if (customTypeOf(id) === 'bin') customCtl[id].checked = !!params[id]
-      else customCtl[id].value = String(params[id])
-    }
-    applyCustomLock(); return true
-  }
-  window.petCustomClear = function () { clearCustomLock(); return true }
-  window.petCustomState = function () {
-    return { locked: customLocked, params: readCustomParams(), applied: (typeof petEmojiApplied === 'function') ? petEmojiApplied() : null }
-  }
   /* 锁定态下模型当前真的写了什么（验证「定住了」的硬判据） */
   window.petEmojiApplied = function () {
     if (!lockedAct) return null
