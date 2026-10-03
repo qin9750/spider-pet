@@ -1334,10 +1334,8 @@
     var acts = document.createElement('div'); acts.className = 'acts'
     var bApply = document.createElement('button'); bApply.className = 'apply'; bApply.textContent = '应用并锁定'
     bApply.addEventListener('click', function () { applyCustomLock(); closeCustom() })
-    /* 「重置」：把所有参数调回默认值（脸恢复到常态），但**不关面板**，
-       方便接着调。原先叫「清除」且会顺手 closeCustom()，容易被误解成「关掉窗口」。 */
-    var bClear = document.createElement('button'); bClear.className = 'clear'; bClear.textContent = '重置'
-    bClear.addEventListener('click', function () { clearCustomLock() })
+    var bClear = document.createElement('button'); bClear.className = 'clear'; bClear.textContent = '清除'
+    bClear.addEventListener('click', function () { clearCustomLock(); closeCustom() })
     acts.appendChild(bApply); acts.appendChild(bClear)
     root.appendChild(acts)
   }
@@ -1376,31 +1374,11 @@
     /* 与面板长按锁定互斥：清掉旧的 emojiLock */
     if (emojiLock) { emojiLock = null; try { localStorage.removeItem('pet.emoji') } catch (e) { } renderEmojiPanel() }
     var p = readCustomParams()
-    syncLockedAct(p)
+    lockedAct = buildLockedActFromParams(p)
     try { localStorage.setItem(CUSTOM_KEY, JSON.stringify({ params: p, locked: true })) } catch (e) { }
     customLocked = true
     showBubble('自定义表情锁定啦～再点「清除」取消。')
     playSfx('ui')
-  }
-  /* ★★ 切换 lockedAct 时，把「上一帧锁着、这一帧不锁了」的参数**显式写回基准值**。
-     这条是「勾上又取消，表情却消不掉」的根因修复：
-     buildLockedActFromParams 对二值开关是 `v<0.5 就跳过`（0 = 不锁），
-     所以取消勾选后该参数直接从 lockedAct 里消失；
-     而 black/ll/rl/fr/Param2/Param3 **不在 idleBase 里**，onFrame 每帧也不会补它们，
-     于是没有任何代码再写这个参数 → 模型永远停在 1，表情挂着清不掉。
-     （和 clearCustomLock 的残留是同一类问题：值必须有人写回去，不能靠「不锁就没人管」。） */
-  function syncLockedAct(p) {
-    var next = buildLockedActFromParams(p)
-    var prev = lockedAct
-    for (var i = 0; prev && i < prev.length; i++) {
-      var oid = prev[i].id, still = false
-      for (var j = 0; j < next.length; j++) if (next[j].id === oid) { still = true; break }
-      if (still) continue
-      /* 二值只有 0/1 语义，「关」就是 0；连续量回基准值 */
-      setP(oid, customTypeOf(oid) === 'bin' ? 0 : baseOf(oid))
-    }
-    lockedAct = next
-    return next
   }
   /* ★ 实时预览（2026-10-03 用户需求「调试表情时在图像上面直接同步体现」）：
      拖动滑块 / 拨开关时立刻重建 lockedAct 写进模型，但**不**写 localStorage、
@@ -1409,7 +1387,7 @@
   function previewCustom() {
     if (!model) return
     if (emojiLock) { emojiLock = null; try { localStorage.removeItem('pet.emoji') } catch (e) { } renderEmojiPanel() }
-    syncLockedAct(readCustomParams())
+    lockedAct = buildLockedActFromParams(readCustomParams())
   }
   /* 控件复位到「什么都不锁」的默认态：睁眼全开、微笑 0、六个开关全关。
      不复位的话，重开面板看到的还是旧值，和脸上的实际状态对不上。 */
@@ -1443,7 +1421,7 @@
     }
     resetCustomCtl()
     try { localStorage.removeItem(CUSTOM_KEY) } catch (e) { }
-    showBubble('已重置为默认表情。'); playSfx('uiOff')
+    showBubble('自定义表情已清除。'); playSfx('uiOff')
   }
   function restoreCustomLock() {
     try {
