@@ -1295,7 +1295,7 @@
     root.innerHTML = ''
     var hd = document.createElement('div')
     hd.className = 'hd'
-    hd.innerHTML = '左右眼「开合 / 微笑」可拉 0~1；下面是 0/1 开关。<b>边调边看效果</b>；点「应用并锁定」才会记住，刷新也记得。'
+    hd.innerHTML = '左右眼「开合 / 微笑」可拉 0~1；下面是 0/1 开关。点「应用并锁定」生效，刷新也记得。'
     root.appendChild(hd)
     for (var ci = 0; ci < customParamDefs.length; ci++) {
       var d = customParamDefs[ci]
@@ -1412,13 +1412,7 @@
        （与 flushActs 注释里记的同一类残留问题。） */
     var old = lockedAct
     lockedAct = null; customLocked = false
-    if (old) for (var i = 0; i < old.length; i++) {
-      var oid = old[i].id
-      /* 二值开关的「关」必须就是 0，不能走 baseOf() —— baseOf 返回的是模型默认值，
-         万一某个参数默认不是 0（「脸红」这类就可能是），表情就还是挂着脸不消失。
-         二值只有 0/1 两种语义，直接写 0；连续量才回到基准值。 */
-      setP(oid, customTypeOf(oid) === 'bin' ? 0 : baseOf(oid))
-    }
+    if (old) for (var i = 0; i < old.length; i++) setP(old[i].id, baseOf(old[i].id))
     resetCustomCtl()
     try { localStorage.removeItem(CUSTOM_KEY) } catch (e) { }
     showBubble('自定义表情已清除。'); playSfx('uiOff')

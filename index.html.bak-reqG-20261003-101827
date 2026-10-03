@@ -1295,7 +1295,7 @@
     root.innerHTML = ''
     var hd = document.createElement('div')
     hd.className = 'hd'
-    hd.innerHTML = '左右眼「开合 / 微笑」可拉 0~1；下面是 0/1 开关。<b>边调边看效果</b>；点「应用并锁定」才会记住，刷新也记得。'
+    hd.innerHTML = '左右眼「开合 / 微笑」可拉 0~1；下面是 0/1 开关。点「应用并锁定」生效，刷新也记得。'
     root.appendChild(hd)
     for (var ci = 0; ci < customParamDefs.length; ci++) {
       var d = customParamDefs[ci]
@@ -1311,21 +1311,11 @@
         var def = (d.id.indexOf('Smile') >= 0) ? 0 : 1   // 睁眼默认全开，微笑默认0
         el.value = String(def)
         var vspan = document.createElement('span'); vspan.className = 'val'; vspan.textContent = Number(def).toFixed(2)
-        /* ★ 实时预览（2026-10-03 用户需求）：拖动过程中就反映到脸上，不再等「应用并锁定」。
-           只改模型，不写 localStorage、不置 customLocked —— 真正「记住」仍只由「应用并锁定」负责。 */
-        ;(function (e, vs) {
-          e.addEventListener('input', function () {
-            vs.textContent = Number(e.value).toFixed(2)
-            previewCustom()
-          })
-        })(el, vspan)
+        ;(function (e, vs) { e.addEventListener('input', function () { vs.textContent = Number(e.value).toFixed(2) }) })(el, vspan)
         row.appendChild(el); row.appendChild(vspan)
       } else {
         el = document.createElement('input')
         el.type = 'checkbox'; el.checked = false
-        /* 二值开关也实时生效 */
-        el.addEventListener('change', previewCustom)
-        el.addEventListener('input', previewCustom)
         row.appendChild(el)
       }
       customCtl[d.id] = el
@@ -1380,46 +1370,8 @@
     showBubble('自定义表情锁定啦～再点「清除」取消。')
     playSfx('ui')
   }
-  /* ★ 实时预览（2026-10-03 用户需求「调试表情时在图像上面直接同步体现」）：
-     拖动滑块 / 拨开关时立刻重建 lockedAct 写进模型，但**不**写 localStorage、
-     **不**置 customLocked —— 真正「记住」仍然只由「应用并锁定」负责。
-     与表情栏「长按锁定」互斥：预览时就让位，免得两套常驻值互相踩。 */
-  function previewCustom() {
-    if (!model) return
-    if (emojiLock) { emojiLock = null; try { localStorage.removeItem('pet.emoji') } catch (e) { } renderEmojiPanel() }
-    lockedAct = buildLockedActFromParams(readCustomParams())
-  }
-  /* 控件复位到「什么都不锁」的默认态：睁眼全开、微笑 0、六个开关全关。
-     不复位的话，重开面板看到的还是旧值，和脸上的实际状态对不上。 */
-  function resetCustomCtl() {
-    for (var ci = 0; ci < customParamDefs.length; ci++) {
-      var d = customParamDefs[ci], el = customCtl[d.id]
-      if (!el) continue
-      if (d.type === 'range') {
-        el.value = String(d.id.indexOf('Smile') >= 0 ? 0 : 1)
-        var vs = (el.parentNode && el.parentNode.querySelector) ? el.parentNode.querySelector('.val') : null
-        if (vs) vs.textContent = Number(el.value).toFixed(2)
-      } else {
-        el.checked = false
-      }
-    }
-  }
   function clearCustomLock() {
-    /* ★★ 必须显式把参数写回基准值：black/ll/rl/fr/Param2/Param3 **不在 idleBase 里**
-       （idleBase 只有 ParamEyeLSmile / ParamEyeRSmile），而 onFrame 每帧只补 idleBase
-       + 当下在演的招式。一旦 lockedAct 置空，就再没有任何代码写这几个参数，
-       模型会永远停在最后一次写入的值 —— 这就是「清除后表情还挂着」的根因。
-       （与 flushActs 注释里记的同一类残留问题。） */
-    var old = lockedAct
     lockedAct = null; customLocked = false
-    if (old) for (var i = 0; i < old.length; i++) {
-      var oid = old[i].id
-      /* 二值开关的「关」必须就是 0，不能走 baseOf() —— baseOf 返回的是模型默认值，
-         万一某个参数默认不是 0（「脸红」这类就可能是），表情就还是挂着脸不消失。
-         二值只有 0/1 两种语义，直接写 0；连续量才回到基准值。 */
-      setP(oid, customTypeOf(oid) === 'bin' ? 0 : baseOf(oid))
-    }
-    resetCustomCtl()
     try { localStorage.removeItem(CUSTOM_KEY) } catch (e) { }
     showBubble('自定义表情已清除。'); playSfx('uiOff')
   }
