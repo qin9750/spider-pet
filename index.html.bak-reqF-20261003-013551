@@ -875,7 +875,7 @@
   function dist(a, b) { var dx = a.x - b.x, dy = a.y - b.y; return Math.sqrt(dx * dx + dy * dy) }
 
   document.addEventListener('pointerdown', function (e) {
-    if (e.target && e.target.closest && (e.target.closest('#bar') || e.target.closest('#emojiPanel') || e.target.closest('#customPanel'))) return
+    if (e.target && e.target.closest && e.target.closest('#bar')) return
     pts[e.pointerId] = { x: e.clientX, y: e.clientY }
     nPts = Object.keys(pts).length
     if (nPts === 1) {
@@ -931,7 +931,7 @@
     if (tapCandidate && nPts === 1 && drag && !drag.moved && now() - tapCandidate.t < 0.6) {
       /* ★ 目标不能是顶栏或表情面板 —— 触屏上手指粗，容易「点按钮顺带戳到角色」 */
       var tg = e.target
-      var isUI = tg && tg.closest && (tg.closest('#bar') || tg.closest('#emojiPanel') || tg.closest('#customPanel'))
+      var isUI = tg && tg.closest && (tg.closest('#bar') || tg.closest('#emojiPanel'))
       if (!isUI) { unlockAudio(); window.petPoke() }
     }
     delete pts[e.pointerId]
